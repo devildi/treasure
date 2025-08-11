@@ -1,0 +1,11 @@
+flutter_native_splash:
+  #color: "#42a5f5"           # 背景色
+  background_image: assets/splash.png   # 图片路径
+  android: true              # 启用Android
+  ios: true
+  android_12:
+    image: assets/splash.png
+    icon_background_color: "#ffffff"
+    image_dark: assets/splash.png
+    icon_background_color_dark: "#42a5f5"
+  #最后要运行：dart run flutter_native_splash:create
