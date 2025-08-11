@@ -31,11 +31,11 @@ class OwnerModel {
 }
 
 class PriceCountModel {
-  final int totalPrice;
+  final double totalPrice;
   final int count;
 
   PriceCountModel({
-    this.totalPrice = 0,
+    this.totalPrice = 0.0,
     this.count = 0,
   });
 
