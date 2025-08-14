@@ -36,6 +36,8 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
         return ['设置宝贝名字', '请输入宝贝名字'];
       case 'price':
         return ['设置购买价格', '请输入价格'];
+      case 'description':
+        return ['设置宝贝的详情', '请输入宝贝描述'];
       default:
         return [''];
     }
@@ -86,8 +88,13 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
           currentToy.price = newPrice;
         });
       }
+    } else if(tag == 'description'){
+      if (newPrice != null && newPrice != 0) {
+        setState(() {
+          currentToy.description = newPrice;
+        });
+      }
     }
-    
   }
 
   Future<void> toXianyu(
@@ -164,7 +171,6 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
                           width: MediaQuery.of(context).size.width / 2,
                         ),
                       ),
-
                       // 右上角开关
                       Positioned(
                         top: 8,
@@ -215,31 +221,43 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
               ),
               const SizedBox(height: 16),
               currentToy.description != ''
-              ? Text(
-                  '${currentToy.description}',
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              ? GestureDetector(
+                  onTap: () => setPrice(context, currentToy, setState, 'description'),
+                  child: Text(
+                    '${currentToy.description}',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  )
                 )
-              : Container(),
+              : GestureDetector(
+                  onTap: () => setPrice(context, currentToy, setState, 'description'),
+                  child: Text(
+                    '点击添加宝贝的描述',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  )
+                ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    '购买价：¥${currentToy.price}',
-                    style: TextStyle(fontSize: 18, color: Colors.red[400], fontWeight: FontWeight.bold),
+                  GestureDetector(
+                    onTap: () => setPrice(context, currentToy, setState, 'price'),
+                    child: Text(
+                      '购买价：¥${currentToy.price}',
+                      style: TextStyle(fontSize: 18, color: Colors.red[400], fontWeight: FontWeight.bold),
+                    )
                   ),
                   currentToy.sellPrice > 0
-                      ? GestureDetector(
-                          onTap: () => setPrice(context, currentToy, setState, 'sellPrice'),
-                          child: Text(
-                            '二手价：¥${currentToy.sellPrice}',
-                            style: TextStyle(fontSize: 18, color: Colors.green[400], fontWeight: FontWeight.bold),
-                          ),
-                        )
-                      : GestureDetector(
-                          onTap: () => setPrice(context, currentToy, setState, 'sellPrice'),
-                          child: const Text('设置卖出价格'),
-                        ),
+                  ? GestureDetector(
+                      onTap: () => setPrice(context, currentToy, setState, 'sellPrice'),
+                      child: Text(
+                        '二手价：¥${currentToy.sellPrice}',
+                        style: TextStyle(fontSize: 18, color: Colors.green[400], fontWeight: FontWeight.bold),
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: () => setPrice(context, currentToy, setState, 'sellPrice'),
+                      child: const Text('设置卖出价格'),
+                    ),
                 ],
               ),
               const SizedBox(height: 16),
