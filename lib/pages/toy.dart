@@ -208,67 +208,79 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
             sizeFactor: _searchResultsAnimation,
             child: FadeTransition(
               opacity: _searchResultsAnimation,
-              child:
-              widget.searchToyList.isNotEmpty
+              child: widget.searchToyList.isNotEmpty
               ? Container(
-                  //color: Colors.blue, 
                   padding: const EdgeInsets.all(8),
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    padding: EdgeInsets.zero,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 1,
-                    ),
-                    itemCount: widget.searchToyList.length,
-                    itemBuilder: (context, index) {
-                      final toy = widget.searchToyList[index];
-                      return GestureDetector(
-                        onTap: () => CommonUtils.showDetail(context, index, widget.searchToyList, widget.getMore),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey[200],
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final rowCount = (widget.searchToyList.length / 2).ceil();
+                      final itemHeight = (MediaQuery.of(context).size.width / 2); // childAspectRatio=1 时，高≈宽
+                      final gridHeight = rowCount * itemHeight + (rowCount - 1) * 8;
+                      return ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.6, // 限制最大高度
+                        ),
+                        child: GridView.builder(
+                          shrinkWrap: gridHeight < MediaQuery.of(context).size.height * 0.6, 
+                          padding: EdgeInsets.zero,
+                          physics: gridHeight < MediaQuery.of(context).size.height * 0.6
+                            ? const NeverScrollableScrollPhysics()
+                            : const AlwaysScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 1,
                           ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: ImageWithFallback(
-                                  toy: toy,
-                                  width: MediaQuery.of(context).size.width / 2,
-                                ),    
-                              ),
-                              Positioned(
-                                bottom: 10,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.6),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    toy.toyName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
+                          itemCount: widget.searchToyList.length,
+                          itemBuilder: (context, index) {
+                            final toy = widget.searchToyList[index];
+                            return GestureDetector(
+                              onTap: () => CommonUtils.showDetail(context, index, widget.searchToyList, widget.getMore),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  color: Colors.grey[200],
+                                ),
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: ImageWithFallback(
+                                        toy: toy,
+                                        width: MediaQuery.of(context).size.width / 2,
+                                      ),    
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                    Positioned(
+                                      bottom: 10,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.6),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          toy.toyName,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
                       );
-                    },
-                  ),
+                    }
+                  )
                 )
               : const SizedBox.shrink()
             )
@@ -382,12 +394,12 @@ class _Item extends StatelessWidget {
                         final exists = await file.exists();
                         if (exists) {
                           await file.delete();
-                          print('文件已删除: $toies[index].localUrl');
+                          debugPrint('文件已删除: $toies[index].localUrl');
                         } else {
-                          print('文件不存在: $toies[index].localUrl');
+                          debugPrint('文件不存在: $toies[index].localUrl');
                         }
                       } catch (e) {
-                        print('删除文件时出错: $e');
+                        debugPrint('删除文件时出错: $e');
                       }
                       if (!context.mounted) return;
                       await getMore(Provider.of<UserData>(context, listen: false).page);

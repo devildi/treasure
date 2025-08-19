@@ -69,9 +69,116 @@ class ProfilePageState extends State<ProfilePage> {
     Provider.of<UserData>(context, listen: false).setUserData(OwnerModel());
   }
 
+  void _showToyDetail(toy){
+    debugPrint(toy.toJson().toString());
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 图片部分
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: double.infinity,
+                      color: Colors.grey[200],
+                      child: AspectRatio(
+                        aspectRatio: toy.picWidth / toy.picHeight,
+                        child: ImageWithFallback(
+                          toy: toy,
+                          width: MediaQuery.of(context).size.width / 2,
+                        )
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // 名称和价格行
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        toy.toyName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '¥${toy.price.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // 描述
+                  if (toy.description != null && toy.description!.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '描述:',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          toy.description!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  // 其他信息
+                  const SizedBox(height: 20),
+                  // // 底部按钮
+                  // Row(
+                  //   mainAxisAlignment: MainAxisAlignment.end,
+                  //   children: [
+                  //     TextButton(
+                  //       onPressed: () => Navigator.pop(context),
+                  //       child: const Text('关闭'),
+                  //     ),
+                  //     const SizedBox(width: 10),
+                  //     if (!toy.isSelled)
+                  //       ElevatedButton(
+                  //         onPressed: () {
+                  //           // 标记为已售出的逻辑
+                  //           Navigator.pop(context);
+                  //         },
+                  //         child: const Text('标记为已售出'),
+                  //       ),
+                  //   ],
+                  // ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SingleChildScrollView(
@@ -92,7 +199,9 @@ class ProfilePageState extends State<ProfilePage> {
                         offset: const Offset(0, 5),
                     )],
                   ),
-                  child: Column(
+                  child: Row(
+                    //mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // 头像
                       widget.user.avatar != ''
@@ -106,24 +215,28 @@ class ProfilePageState extends State<ProfilePage> {
                         backgroundColor: Colors.grey[200],
                         backgroundImage: const AssetImage('assets/wechat.png'),  // 使用AssetImage
                       ),
-                      const SizedBox(height: 16),
-                      // 用户名
-                      Text(
-                        widget.user.name,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // 简介
-                      Text(
-                        '玩具收藏家',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                      const SizedBox(width: 72),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.user.name,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // 简介
+                          Text(
+                            '玩具收藏家',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -182,17 +295,9 @@ class ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   const Spacer(),
-                  // Text(
-                  //   "查看全部",
-                  //   style: TextStyle(
-                  //     fontSize: 14,
-                  //     color: Colors.grey[500],
-                  //   ),
-                  // ),
                 ],
               ),
             ),
-            // 修改后的玩具容器，固定高度并可滚动
             Container(
               height: 300, 
               width: MediaQuery.of(context).size.width,// 固定高度
@@ -217,15 +322,18 @@ class ProfilePageState extends State<ProfilePage> {
                           children: widget.toies.map((toy) => SizedBox(
                             width: itemSize,
                             height: itemSize,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                color: Colors.grey[200],
-                                child: ImageWithFallback(
-                                  toy: toy,
-                                  width: MediaQuery.of(context).size.width / 2,
+                            child: GestureDetector(
+                              onTap: () => _showToyDetail(toy),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  color: Colors.grey[200],
+                                  child: ImageWithFallback(
+                                    toy: toy,
+                                    width: MediaQuery.of(context).size.width / 2,
+                                  ),
                                 ),
-                              ),
+                              )
                             ),
                           )).toList(),
                         );

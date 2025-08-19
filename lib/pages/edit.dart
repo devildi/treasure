@@ -46,6 +46,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
     super.dispose();
     _controller1.dispose();
     _controller2.dispose();
+    _controller3.dispose();
   }
 
   void upToServer(body, localPath) async{
@@ -126,7 +127,6 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
       ReturnBody body = ReturnBody.fromJson(response.rawData);
       return body;
     } catch(error){
-      
       if (error is StorageError) {
         switch (error.type) {
           case StorageErrorType.CONNECT_TIMEOUT:
