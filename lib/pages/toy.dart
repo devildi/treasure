@@ -40,7 +40,7 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
   late AnimationController _searchResultsController;
   late Animation<double> _searchResultsAnimation;
   late AnimationController _contentController;
-  late Animation<double> _contentAnimation;
+  //late Animation<double> _contentAnimation;
 
   @override
   void initState() {
@@ -62,10 +62,10 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
       vsync: this,
     );
     
-    _contentAnimation = CurvedAnimation(
-      parent: _contentController,
-      curve: Curves.easeInOut,
-    );
+    // _contentAnimation = CurvedAnimation(
+    //   parent: _contentController,
+    //   curve: Curves.easeInOut,
+    // );
     
     // Start with content visible
     _contentController.forward();

@@ -317,11 +317,14 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
                       ),
                       onPressed: () async {
                         final response = await TreasureDao.modifyToy(currentToy.toJson());
+                        if (!context.mounted) return;
                         await widget.getMore(Provider.of<UserData>(context, listen: false).page);
                         if (response != null) {
+                          if (!context.mounted) return;
                           Navigator.pop(context);
                           CommonUtils.showSnackBar(context, '保存成功');
                         } else {
+                          if (!context.mounted) return;
                           CommonUtils.show(context, '保存失败');
                         }
                       },
