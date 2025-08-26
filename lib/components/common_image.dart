@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-//import 'package:treasure/tools.dart';
+import 'package:treasure/tools.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
 
@@ -19,7 +19,7 @@ class ImageWithFallback extends StatefulWidget {
 }
 
 class ImageWithFallbackState extends State<ImageWithFallback> {
-  bool fileExists = false;
+  String localFileURL = '';
 
   @override
   void initState() {
@@ -28,17 +28,19 @@ class ImageWithFallbackState extends State<ImageWithFallback> {
   }
 
   Future<void> _checkFile(toy) async {
-    final file = File(toy.localUrl);
-    final exists = await file.exists();
-    if (!exists) {
-      _downloadImage(toy.toyPicUrl, toy.localUrl);
+    String resourceId = CommonUtils.removeBaseUrl(toy.toyPicUrl);
+    bool isExists = await CommonUtils.isFileExist(resourceId);
+    String localFileURL111 = '';
+    if (!isExists) {
+      _downloadImage(toy.toyPicUrl, await CommonUtils.getLocalURLForResource(resourceId));
       debugPrint('${toy.toyName}的图片不存在，开始下载...');
     } else{
+      localFileURL111 = await CommonUtils.getLocalURLForResource(resourceId);
       debugPrint('${toy.toyName}使用本地图片');
     }
     if (mounted) {
       setState(() {
-        fileExists = exists;
+        localFileURL = localFileURL111;
       });
     }
   }
@@ -54,7 +56,7 @@ class ImageWithFallbackState extends State<ImageWithFallback> {
       await file.writeAsBytes(response.data!);
       if (mounted) {
         setState(() {
-          fileExists = true;
+          localFileURL = file.path;
         });
       }
     } catch (e) {
@@ -65,14 +67,13 @@ class ImageWithFallbackState extends State<ImageWithFallback> {
   @override
   Widget build(BuildContext context) {
     final double height = widget.width * widget.toy.picHeight / widget.toy.picWidth;
-
     return Container(
       decoration: const BoxDecoration(color: Colors.transparent),
       width: widget.width,
       height: height,
-      child: fileExists
+      child: localFileURL != ''
       ? Image.file(
-          File(widget.toy.localUrl),
+          File(localFileURL),
           fit: BoxFit.cover,
         )
       : CachedNetworkImage(

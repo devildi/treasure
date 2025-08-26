@@ -86,7 +86,6 @@ class ToyModel {
   String id;
   String toyName;
   String toyPicUrl;
-  String localUrl;
   num picWidth;
   num picHeight;
   String description;
@@ -102,7 +101,6 @@ class ToyModel {
     this.id = '',
     this.toyName = '', 
     this.toyPicUrl = '', 
-    this.localUrl = '', 
     this.picWidth = 0, 
     this.picHeight = 0,
     this.description = '',
@@ -121,7 +119,6 @@ class ToyModel {
       id: json['_id'] ?? '',
       toyName : json['toyName'],
       toyPicUrl : json['toyPicUrl'] ?? '',
-      localUrl : json['localUrl'] ?? '',
       picWidth : json['picWidth'] ?? '',
       picHeight : json['picHeight'] ?? '',
       description : json['description']?? '',
@@ -140,7 +137,6 @@ class ToyModel {
       'id': id,
       'toyName': toyName,
       'toyPicUrl': toyPicUrl,
-      'localUrl': localUrl,
       'picWidth': picWidth,
       'picHeight': picHeight,
       'description': description,

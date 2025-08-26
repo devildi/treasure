@@ -2,6 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_swiper_null_safety/flutter_swiper_null_safety.dart';
 import 'package:treasure/components/swiper_item.dart';
+import 'dart:io';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 class CommonUtils {
   static Color randomColor() {
@@ -102,5 +105,89 @@ class CommonUtils {
         )
       ),
     );
+  }
+
+  static Future<void> deleteLocalFilesAsync(List<String> localURLs, {bool hasVideo = false}) async {
+    if(hasVideo){
+      String pic = localURLs[0];
+      String video = localURLs[1];
+      try {
+        if (await isFileExist(pic)) {
+          final file = await getLocalFileForResource(pic);
+          await file.delete();
+          debugPrint('已删除本地文件: $pic');
+        } else {
+          debugPrint('本地文件不存在: $pic');
+        }
+      } catch (e) {
+        debugPrint('删除本地文件时发生错误: $e');
+      }
+      try {
+        if (await isFileExist(video, isImg: false)) {
+          final file = await getLocalFileForResource(pic, isImg: false);
+          await file.delete();
+          debugPrint('已删除本地文件: $video');
+        } else {
+          debugPrint('本地文件不存在: $video');
+        }
+      } catch (e) {
+        debugPrint('删除本地文件时发生错误: $e');
+      }
+    } else {
+      for (String localURL in localURLs) {
+        try {
+          if (await isFileExist(localURL)) {
+            final file = await getLocalFileForResource(localURL);
+            await file.delete();
+            debugPrint('已删除本地文件: $localURL');
+          } else {
+            debugPrint('本地文件不存在: $localURL');
+          }
+        } catch (e) {
+          debugPrint('删除本地文件时发生错误: $e');
+        }
+      }
+    }
+  }
+
+  static Future<String> getLocalURLForResource(String resourceId, {bool isImg = true}) async {
+    // 获取应用的本地缓存目录
+    final dir = await getApplicationDocumentsDirectory();
+    String filename = '';
+    // 使用资源 ID 作为文件名
+    if(isImg){
+      filename = '$resourceId.jpeg'; 
+    } else {
+      filename = '$resourceId.mp4';
+    }
+   
+    return p.join(dir.path, filename);  // 拼接文件路径
+  }
+
+  static Future<File> getLocalFileForResource(String resourceId, {bool isImg = true}) async {
+    // 获取应用的本地缓存目录
+    String filename = '';
+    final dir = await getApplicationDocumentsDirectory();
+    // 使用资源 ID 作为文件名
+    if(isImg){
+      filename = '$resourceId.jpeg'; 
+    } else {
+      filename = '$resourceId.mp4';
+    }
+     // 你可以根据需要修改文件扩展名
+    return File(p.join(dir.path, filename));  // 拼接文件路径
+  }
+
+  static Future<bool> isFileExist(String resourceId, {bool isImg = true}) async {
+    final file = await getLocalFileForResource(resourceId, isImg: isImg);
+    return await file.exists();  // 判断文件是否存在
+  }
+
+  static String removeBaseUrl(String url) {
+    const baseUrl = 'http://nextsticker.xyz/';
+    if (url.startsWith(baseUrl)) {
+      return url.substring(baseUrl.length);  // 去掉前缀部分
+    }
+    return url;  // 如果没有这个前缀，返回原始 URL
   }
 }

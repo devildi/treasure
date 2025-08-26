@@ -49,8 +49,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
     _controller3.dispose();
   }
 
-  void upToServer(body, localPath) async{
-
+  void upToServer(body) async{
     List picArr = [];
     for (var i = 0; i < body.length; i++) {
       picArr.add(body[i].toJson());
@@ -60,7 +59,6 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
         'toyName': toyName,
         'description': description,
         'toyPicUrl': body[0].key,
-        'localUrl': localPath,
         'picWidth': body[0].width,
         'picHeight': body[0].height,
         'labels': chipLabels[_selectedChipIndex],
@@ -284,7 +282,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
     });
     tasks.add(startUploadToQiniu(token, medias[0].path, false));
     List body = await Future.wait(tasks);
-    upToServer(body, medias[0].path);
+    upToServer(body);
   }
 
   void _nameChanged(String str){
@@ -416,7 +414,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
           :Container(),
           uploading == true
           ?Center(
-            child: Text('${progress * 100.round()}%', style: const TextStyle(color: Colors.grey),)
+            child: Text('${(progress * 100).round()}%', style: const TextStyle(color: Colors.grey),)
           )
           :Container(),
           uploading == true

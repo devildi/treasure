@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:treasure/components/common_image.dart';
 import 'package:treasure/dao.dart';
 import 'package:treasure/toy_model.dart';
-import 'dart:io';
 
 class HomePage extends StatefulWidget {
   final List toies;
@@ -304,6 +303,7 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
                       itemCount: widget.toies.length,
                       itemBuilder: (context, index) {
                         return _Item(
+                          key: ValueKey(widget.toies[index].id),
                           index: index, 
                           toies: widget.toies,
                           getMore: widget.initData
@@ -390,14 +390,7 @@ class _Item extends StatelessWidget {
                     
                     if(result.deletedCount == 1){
                       try {
-                        final file = File(toies[index].localUrl);
-                        final exists = await file.exists();
-                        if (exists) {
-                          await file.delete();
-                          debugPrint('文件已删除: $toies[index].localUrl');
-                        } else {
-                          debugPrint('文件不存在: $toies[index].localUrl');
-                        }
+                        await CommonUtils.deleteLocalFilesAsync([CommonUtils.removeBaseUrl(toies[index].toyPicUrl)]);
                       } catch (e) {
                         debugPrint('删除文件时出错: $e');
                       }
