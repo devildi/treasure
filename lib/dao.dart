@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:treasure/toy_model.dart';
 
-const bool developMode = false;
+const bool developMode = true;
 const String urlBase = developMode ? 'http://172.20.10.13:4000/' : 'https://nextsticker.cn/';
 
 const loginUrl = '${urlBase}api/treasure/login';

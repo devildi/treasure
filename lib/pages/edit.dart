@@ -276,6 +276,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
       CommonUtils.showSnackBar(context, '请填写完整信息！');
       return;
     }
+    FocusScope.of(context).unfocus();
     String token = await TreasureDao.getToken('string');
     setState(() {
       uploading = true;
