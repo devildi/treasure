@@ -70,8 +70,12 @@ class MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
-    Provider.of<UserData>(context, listen: false).setLoading(true);
-    initData(1);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<UserData>(context, listen: false).setLoading(true);
+      initData(1);
+    });
+    // Provider.of<UserData>(context, listen: false).setLoading(true);
+    // initData(1);
   }
 
   void initData(page) async {
