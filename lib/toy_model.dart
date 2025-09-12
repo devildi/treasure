@@ -117,10 +117,10 @@ class ToyModel {
     
     return ToyModel(
       id: json['_id'] ?? '',
-      toyName : json['toyName'],
+      toyName : json['toyName'] ?? '',
       toyPicUrl : json['toyPicUrl'] ?? '',
-      picWidth : json['picWidth'] ?? '',
-      picHeight : json['picHeight'] ?? '',
+      picWidth : json['picWidth'] ?? 0,
+      picHeight : json['picHeight'] ?? 0,
       description : json['description']?? '',
       labels : json['labels'] ?? '',
       owner : json['owner'] != null ? OwnerModel.fromJson(json['owner']) : OwnerModel(),

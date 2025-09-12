@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_swiper_null_safety/flutter_swiper_null_safety.dart';
 import 'package:treasure/components/swiper_item.dart';
+import 'package:treasure/components/interactive_feedback.dart';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -14,12 +15,15 @@ class CommonUtils {
   }
 
   static void showSnackBar(BuildContext context, String message, {Color? backgroundColor}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: backgroundColor ?? Colors.blue,
-        content: Text(message, textAlign: TextAlign.center),
-      ),
-    );
+    if (backgroundColor == Colors.green) {
+      InteractiveFeedback.showSuccess(context, message);
+    } else if (backgroundColor == Colors.red) {
+      InteractiveFeedback.showError(context, message);
+    } else if (backgroundColor == Colors.orange) {
+      InteractiveFeedback.showWarning(context, message);
+    } else {
+      InteractiveFeedback.showInfo(context, message);
+    }
   }
 
   static void show(BuildContext context, String message, {Duration? duration}) {

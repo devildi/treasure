@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:treasure/toy_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:provider/provider.dart';
-import 'package:treasure/store.dart';
 import 'package:treasure/components/common_image.dart';
+import 'package:treasure/core/state/state_manager.dart';
 
 class ProfilePage extends StatefulWidget {
   final OwnerModel user;
@@ -26,47 +25,107 @@ class ProfilePage extends StatefulWidget {
 class ProfilePageState extends State<ProfilePage> {
 
   final ScrollController _controller = ScrollController();
+  int _currentPage = 0;
+  int _previousItemCount = 0;
+  bool _isLoading = false;
+
+  void _scrollListener() {
+    if (_controller.position.pixels >= _controller.position.maxScrollExtent - 50 && 
+        !_isLoading && 
+        _controller.position.outOfRange == false) {
+      debugPrint('触发加载更多: 当前页=$_currentPage, 当前数量=${widget.toies.length}');
+      _addMoreData(_currentPage);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() {
-      if (_controller.position.pixels == _controller.position.maxScrollExtent) {
-        if(widget.toies.length - Provider.of<UserData>(context, listen: false).pre == 20){
-          _addMoreData(Provider.of<UserData>(context, listen: false).page);
-        } else if(!Provider.of<UserData>(context, listen: false).netWorkStatus){
-          _addMoreData(Provider.of<UserData>(context, listen: false).page);
+    _previousItemCount = widget.toies.length;
+    _controller.addListener(_scrollListener);
+  }
+
+  @override
+  void didUpdateWidget(ProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 当widget更新时（数据变化），检查是否需要更新状态
+    if (oldWidget.toies.length != widget.toies.length) {
+      debugPrint('数据已更新: ${oldWidget.toies.length} -> ${widget.toies.length}');
+      // 保存当前滚动位置
+      final currentScrollOffset = _controller.hasClients ? _controller.offset : 0.0;
+      
+      if (_isLoading) {
+        setState(() {
+          _isLoading = false;
+          _previousItemCount = widget.toies.length;
+        });
+        
+        // 恢复滚动位置
+        if (_controller.hasClients) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_controller.hasClients && currentScrollOffset > 0) {
+              _controller.animateTo(
+                currentScrollOffset,
+                duration: const Duration(milliseconds: 100),
+                curve: Curves.easeOut,
+              );
+            }
+          });
         }
       }
-    });
-  }
-
-  Future <void> _addMoreData(index) async{
-    if(Provider.of<UserData>(context, listen: false).loading == false){
-      Provider.of<UserData>(context, listen: false).setLoading(true);
-      getMore(index);
     }
   }
 
-  void getMore(index)async{
-    if(Provider.of<UserData>(context, listen: false).loading == true){
-      await widget.getMore(index);
-      if (!context.mounted) return;
-      if(Provider.of<UserData>(context, listen: false).netWorkStatus){
-        Provider.of<UserData>(context, listen: false).setLoading(false);
-        Provider.of<UserData>(context, listen: false).setPage(index + 1);
-        Provider.of<UserData>(context, listen: false).setPre(widget.toies.length);
-      } else {
-         Provider.of<UserData>(context, listen: false).setLoading(false);
+  Future<void> _addMoreData(int currentPage) async {
+    if (_isLoading) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    StateManager.uiState(context).setComponentLoading('profile_load_more', true);
+    debugPrint('开始加载第 ${currentPage + 1} 页数据...');
+    
+    try {
+      await widget.getMore(currentPage + 1);
+      if (!mounted) return;
+      
+      debugPrint('数据加载完成，当前数量: ${widget.toies.length}');
+      
+      setState(() {
+        _isLoading = false;
+        _currentPage = currentPage + 1;
+        _previousItemCount = widget.toies.length;
+      });
+      
+      StateManager.uiState(context).setComponentLoading('profile_load_more', false);
+      
+    } catch (e) {
+      debugPrint('加载更多数据失败: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        StateManager.uiState(context).setComponentLoading('profile_load_more', false);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_scrollListener);
+    _controller.dispose();
+    super.dispose();
   }
 
   void logout() async{
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth');
-    if (!context.mounted) return;
-    Provider.of<UserData>(context, listen: false).setUserData(OwnerModel());
+    if (!mounted) return;
+    
+    // 使用新的状态管理系统进行登出
+    final userState = StateManager.userState(context);
+    await userState.logout();
   }
 
   void _showToyDetail(toy){
@@ -339,6 +398,32 @@ class ProfilePageState extends State<ProfilePage> {
                         );
                       },
                     ),
+                    // 加载更多指示器
+                    if (_isLoading)
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[600]!),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '加载更多...',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:treasure/tools.dart';
-import 'package:treasure/store.dart';
 import 'package:treasure/toy_model.dart';
+import 'package:treasure/core/state/state_manager.dart';
 
 class Login extends StatefulWidget {
   const Login({
@@ -42,9 +41,13 @@ class LoginState extends State<Login> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth', json.encode(''));
     if (!context.mounted) return;
-    Provider.of<UserData>(context, listen: false).setUserData(OwnerModel());
+    // 使用新的状态管理系统设置空用户数据
+    final userState = StateManager.userState(context);
+    await userState.login(OwnerModel());
     _controller.dispose();
-    CommonUtils.showSnackBar(context, '登录成功！', backgroundColor: Colors.green);
+    if (mounted) {
+      CommonUtils.showSnackBar(context, '登录成功！', backgroundColor: Colors.green);
+    }
   }
 
   @override

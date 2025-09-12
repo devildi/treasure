@@ -6,8 +6,6 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:share_plus/share_plus.dart';
 import '../dao.dart';
-import 'package:treasure/store.dart';
-import 'package:provider/provider.dart';
 import 'package:treasure/components/common_image.dart';
 
 class ToyDetailCard extends StatefulWidget {
@@ -318,7 +316,8 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
                       onPressed: () async {
                         final response = await TreasureDao.modifyToy(currentToy.toJson());
                         if (!context.mounted) return;
-                        await widget.getMore(Provider.of<UserData>(context, listen: false).page);
+                        // 简化为固定页面0，由于这是保存操作，不需要特定页面
+                        await widget.getMore(0);
                         if (response != null) {
                           if (!context.mounted) return;
                           Navigator.pop(context);

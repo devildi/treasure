@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:treasure/dao.dart';
-import 'package:treasure/store.dart';
 import 'package:treasure/tools.dart';
 import 'package:treasure/pages/login.dart';
 import 'package:treasure/main.dart';
+import 'package:treasure/toy_model.dart';
+import 'package:treasure/core/state/state_manager.dart';
+import 'package:treasure/core/navigation/page_transitions.dart';
 
 class Register extends StatefulWidget {
   const Register({
@@ -81,8 +82,12 @@ class RegisterState extends State<Register> {
           await prefs.setString('auth', json.encode(res));
           if (!context.mounted) return;
           
-          // 先更新用户数据
-          Provider.of<UserData>(context, listen: false).setUserData(res);
+          // 使用新的状态管理系统设置用户数据
+          final userState = StateManager.userState(context);
+          final ownerModel = OwnerModel.fromJson(res);
+          await userState.login(ownerModel);
+          
+          if (!context.mounted) return;
           CommonUtils.showSnackBar(context, '注册成功！', backgroundColor: Colors.green);
           
           // 延迟导航以确保状态更新完成
@@ -159,11 +164,11 @@ class RegisterState extends State<Register> {
             top: MediaQuery.of(context).padding.top,
             right: 20,
             child: GestureDetector(onTap:(){
-              Navigator.pushReplacement(
+              AppNavigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const Login(),
-                ),
+                const Login(),
+                type: PageTransitionType.slideScale,
+                direction: SlideDirection.fromLeft,
               );
             }, child: const Text('去登录', style: TextStyle(color: Colors.white),), )
           ),

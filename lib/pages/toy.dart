@@ -1,40 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:treasure/tools.dart';
-import 'package:treasure/store.dart';
-import 'package:provider/provider.dart';
 import 'package:treasure/components/common_image.dart';
 import 'package:treasure/dao.dart';
 import 'package:treasure/toy_model.dart';
+import 'package:treasure/core/pagination/pagination_controller.dart';
+import 'package:treasure/components/optimized_masonry_grid.dart';
+import 'package:treasure/core/image/image_cache_manager.dart';
+import 'package:treasure/core/state/state_manager.dart';
+import 'package:treasure/core/storage/storage_service.dart';
+import 'package:treasure/core/performance/performance_manager.dart';
+import 'package:treasure/core/performance/memory_optimizer.dart';
 
 class HomePage extends StatefulWidget {
-  final List toies;
   final List searchToyList;
-  final Function getMore;
-  final Function initData;
   final Function search;
   final Function clearSearch;
-  const HomePage({Key? key, 
-    required this.toies,
+  
+  const HomePage({
+    Key? key, 
     required this.searchToyList,
-    required this.getMore,
-    required this.initData,
     required this.search,
     required this.clearSearch,
-  }
-) : super(key: key);
+  }) : super(key: key);
   
   @override
   HomePageState createState() => HomePageState();
 }
 
-class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, TickerProviderStateMixin{
-  @override
-  bool get wantKeepAlive => true;
+class HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _controller = ScrollController();
+  late PaginationController<ToyModel> _paginationController;
   bool showBtn = false;
   bool uploading = false;
+  final ImageCacheManager _imageCacheManager = ImageCacheManager();
   //动画
   late AnimationController _searchResultsController;
   late Animation<double> _searchResultsAnimation;
@@ -44,6 +43,13 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize pagination controller
+    _paginationController = PaginationController<ToyModel>(
+      loadData: _loadToysData,
+      pageSize: 20,
+    );
+    
     // Animation controller for search results
     _searchResultsController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -61,11 +67,6 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
       vsync: this,
     );
     
-    // _contentAnimation = CurvedAnimation(
-    //   parent: _contentController,
-    //   curve: Curves.easeInOut,
-    // );
-    
     // Start with content visible
     _contentController.forward();
 
@@ -79,62 +80,144 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
           showBtn = true;
         });
       }
-      if (_controller.position.pixels == _controller.position.maxScrollExtent) {
-        if(widget.toies.length - Provider.of<UserData>(context, listen: false).pre == 20){
-          _addMoreData(Provider.of<UserData>(context, listen: false).page);
-        } else if(!Provider.of<UserData>(context, listen: false).netWorkStatus){
-          _addMoreData(Provider.of<UserData>(context, listen: false).page);
-        }
-      }
+      // Removed auto load more logic - now handled by OptimizedMasonryGrid
     });
   }
 
-  Future <void> _addMoreData(index) async{
-    if(Provider.of<UserData>(context, listen: false).loading == false){
-      Provider.of<UserData>(context, listen: false).setLoading(true);
-      getMore(index);
-    }
+  // Load toys data for pagination
+  Future<List<ToyModel>> _loadToysData(int page) async {
+    return await PerformanceManager.instance.measureAsync(
+      'load_toys_page_$page',
+      () async {
+        try {
+          final uid = StateManager.readUserState(context).currentUser.uid;
+      
+      // 先尝试从缓存加载
+      final cacheKey = 'toys_page_${page}_uid_$uid';
+      final cachedData = await StorageService.instance.getCachedApiResponse(cacheKey);
+      
+      if (cachedData != null) {
+        final toyList = (cachedData['toyList'] as List?)
+            ?.map((json) => ToyModel.fromJson(json))
+            .toList() ?? [];
+        
+        if (toyList.isNotEmpty) {
+          // 异步预加载缓存的图片
+          final imagesToPreload = toyList
+              .map((toy) => {
+                    'url': toy.toyPicUrl,
+                    'name': toy.toyName,
+                  })
+              .toList();
+          _imageCacheManager.preloadImages(imagesToPreload);
+          
+          return toyList;
+        }
+      }
+      
+      // 缓存未命中，从网络加载
+      final response = await TreasureDao.getAllToies(page, uid);
+      
+      // 缓存API响应
+      await StorageService.instance.cacheApiResponse(
+        cacheKey,
+        {
+          'toyList': response.toyList.map((toy) => toy.toJson()).toList(),
+          'page': page,
+          'uid': uid,
+        },
+        expiry: const Duration(minutes: 30), // 30分钟缓存
+      );
+      
+      // 同步到离线存储
+      await StorageService.instance.syncToOffline(response.toyList);
+      
+      // 预加载图片以提升用户体验
+      final imagesToPreload = response.toyList
+          .map((toy) => {
+                'url': toy.toyPicUrl,
+                'name': toy.toyName,
+              })
+          .toList();
+      
+      // 异步预加载，不阻塞数据返回
+      _imageCacheManager.preloadImages(imagesToPreload);
+      
+      return response.toyList;
+    } catch (e) {
+      // 网络错误时尝试使用离线数据
+      if (page == 0) { // 只在第一页时返回离线数据
+        final offlineData = await StorageService.instance.getOfflineData();
+        if (offlineData.isNotEmpty) {
+          // 显示离线数据提示
+          if (mounted) {
+            StateManager.uiState(context).setComponentLoading('offline_mode', true);
+          }
+          return offlineData;
+        }
+        }
+        throw Exception('Failed to load toys: $e');
+      }
+      },
+    );
   }
 
-  void getMore(index)async{
-    if(Provider.of<UserData>(context, listen: false).loading == true){
-      await widget.getMore(index);
-      if (!context.mounted) return;
-      if(Provider.of<UserData>(context, listen: false).netWorkStatus){
-        Provider.of<UserData>(context, listen: false).setLoading(false);
-        Provider.of<UserData>(context, listen: false).setPage(index + 1);
-        Provider.of<UserData>(context, listen: false).setPre(widget.toies.length);
-      } else {
-         Provider.of<UserData>(context, listen: false).setLoading(false);
-      }
-    }
-  }
+  // These methods are no longer needed with PaginationController
 
   @override
   void dispose() {
     _searchController.dispose();
     _controller.dispose();
+    _searchResultsController.dispose();
+    _contentController.dispose();
+    _paginationController.dispose();
     super.dispose();
   }
 
-  void _refresh(){
-    widget.initData(1);
-  }
 
-  Future<void> _onRefresh() async{
-    await widget.initData(1);
-    if (!context.mounted) return;
-    Provider.of<UserData>(context, listen: false).setPage(2);
-    Provider.of<UserData>(context, listen: false).setPre(0);
-  }
-
-  void _search(String value) {
-    Provider.of<UserData>(context, listen: false).setLoading(true);
-    if(_searchController.text != ''){
-      widget.search(_searchController.text);
-      // Animate when search results appear
+  void _search(String value) async {
+    if (_searchController.text.trim().isEmpty) return;
+    
+    StateManager.uiState(context).setComponentLoading('search', true);
+    
+    try {
+      final query = _searchController.text.trim();
+      
+      // 先尝试从缓存获取搜索结果
+      final cachedResults = await StorageService.instance.getCachedSearchResults(query);
+      if (cachedResults != null && cachedResults.isNotEmpty) {
+        widget.search(cachedResults);
+        _searchResultsController.forward();
+        _contentController.reverse();
+        if (mounted) {
+          StateManager.uiState(context).setComponentLoading('search', false);
+        }
+        return;
+      }
+      
+      // 执行网络搜索
+      widget.search(query);
+      
+      // 动画显示搜索结果
       _searchResultsController.forward();
       _contentController.reverse();
+      
+    } catch (e) {
+      // 搜索失败时尝试离线搜索
+      try {
+        final offlineResults = await StorageService.instance.searchOffline(_searchController.text.trim());
+        if (offlineResults.isNotEmpty) {
+          widget.search(offlineResults);
+          _searchResultsController.forward();
+          _contentController.reverse();
+        }
+      } catch (offlineError) {
+        debugPrint('离线搜索失败: $offlineError');
+      }
+    } finally {
+      if (mounted) {
+        StateManager.uiState(context).setComponentLoading('search', false);
+      }
     }
   }
 
@@ -151,12 +234,10 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     final double statusBarHeight = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      body: widget.toies.isNotEmpty
-      ?Column(
+      body: Column(
         children: [
           Container(
             color: Colors.white,
@@ -235,7 +316,7 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
                           itemBuilder: (context, index) {
                             final toy = widget.searchToyList[index];
                             return GestureDetector(
-                              onTap: () => CommonUtils.showDetail(context, index, widget.searchToyList, widget.getMore),
+                              onTap: () => CommonUtils.showDetail(context, index, widget.searchToyList, (page) => _paginationController.refresh()),
                               child: Container(
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
@@ -288,51 +369,38 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
           ?const Divider()
           :const SizedBox.shrink(),
           Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: Stack(
-                children: [
-                  RefreshIndicator(
-                    onRefresh: _onRefresh,
-                    child: MasonryGridView.count(
-                      controller: _controller,
-                      padding: EdgeInsets.zero,
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 1,
-                      crossAxisSpacing: 1,
-                      itemCount: widget.toies.length,
-                      itemBuilder: (context, index) {
-                        return _Item(
-                          key: ValueKey(widget.toies[index].id),
-                          index: index, 
-                          toies: widget.toies,
-                          getMore: widget.initData
-                        );
-                      },
-                    )
+            child: OptimizedMasonryGrid<ToyModel>(
+              controller: _paginationController,
+              scrollController: _controller,
+              crossAxisCount: 2,
+              mainAxisSpacing: 1,
+              crossAxisSpacing: 1,
+              padding: EdgeInsets.zero,
+              itemBuilder: (context, toy, index) {
+                return _Item(
+                  key: ValueKey(toy.id),
+                  index: index,
+                  toy: toy,
+                  onTap: () => CommonUtils.showDetail(
+                    context, 
+                    index, 
+                    _paginationController.items, 
+                    (page) => _paginationController.refresh(),
                   ),
-                  Provider.of<UserData>(context, listen: false).loading == true
-                  ?const Center(
-                    child: CircularProgressIndicator(),
-                  )
-                  :Container()
-                ]
-              )     
+                  onDeleted: () => _paginationController.refresh(),
+                );
+              },
+              loadingWidget: const Center(child: CircularProgressIndicator()),
+              emptyWidget: const Center(
+                child: Text('暂无数据', style: TextStyle(fontSize: 16, color: Colors.grey)),
+              ),
+              loadingMoreWidget: const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Center(child: CircularProgressIndicator()),
+              ),
             ),
           ),
         ],
-      )
-      :Center(
-        child: Provider.of<UserData>(context, listen: false).netWorkStatus && Provider.of<UserData>(context, listen: false).loading
-        ? const CircularProgressIndicator() 
-        : Provider.of<UserData>(context, listen: false).netWorkStatus
-        ? const Text('暂无数据', style: TextStyle(fontSize: 16, color: Colors.grey))
-        :ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-          icon: const Icon(Icons.refresh, color: Colors.white,),
-          label: const Text("点击刷新",style: TextStyle(color: Colors.white),),
-          onPressed: _refresh,
-        )
       ),
       floatingActionButton: showBtn
       ? FloatingActionButton(
@@ -352,21 +420,23 @@ class HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin, 
 
 class _Item extends StatelessWidget {
   final int index;
-  final List toies;
-  final Function getMore;
+  final ToyModel toy;
+  final VoidCallback onTap;
+  final VoidCallback? onDeleted;
 
   const _Item({
     Key? key,
     required this.index,
-    required this.toies,
-    required this.getMore,
+    required this.toy,
+    required this.onTap,
+    this.onDeleted,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
 
     return GestureDetector(
-      onTap: () => CommonUtils.showDetail(context, index, toies, getMore),
+      onTap: onTap,
       onLongPress: () => {
         showDialog(
           context: context,
@@ -386,16 +456,16 @@ class _Item extends StatelessWidget {
                 TextButton(
                   onPressed: () async{
                     // 第二个按钮的操作
-                    ResultModel result = await TreasureDao.deleteToy(toies[index].id, toies[index].toyPicUrl.substring('http://nextsticker.xyz/'.length));
+                    ResultModel result = await TreasureDao.deleteToy(toy.id, toy.toyPicUrl.substring('http://nextsticker.xyz/'.length));
                     
                     if(result.deletedCount == 1){
                       try {
-                        await CommonUtils.deleteLocalFilesAsync([CommonUtils.removeBaseUrl(toies[index].toyPicUrl)]);
+                        await CommonUtils.deleteLocalFilesAsync([CommonUtils.removeBaseUrl(toy.toyPicUrl)]);
                       } catch (e) {
                         debugPrint('删除文件时出错: $e');
                       }
                       if (!context.mounted) return;
-                      await getMore(Provider.of<UserData>(context, listen: false).page);
+                      onDeleted?.call();
                       if (!context.mounted) return;
                       CommonUtils.show(context, '删除成功');
                       Navigator.of(context).pop();
@@ -422,7 +492,7 @@ class _Item extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ImageWithFallback(
-                    toy: toies[index],
+                    toy: toy,
                     width: MediaQuery.of(context).size.width / 2,
                   ),
                   Container(
@@ -430,8 +500,8 @@ class _Item extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('${toies[index].toyName}', style: const TextStyle(fontSize: 15)),
-                        toies[index].isSelled
+                        Text(toy.toyName, style: const TextStyle(fontSize: 15)),
+                        toy.isSelled
                         ? Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(

@@ -1,103 +1,166 @@
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:treasure/toy_model.dart';
+import 'package:treasure/core/network/treasure_api.dart';
+import 'package:treasure/core/network/network_exceptions.dart';
+import 'package:treasure/core/config/app_config.dart';
 
-const bool developMode = true;
-const String urlBase = developMode ? 'http://172.20.10.13:4000/' : 'https://nextsticker.cn/';
+class TreasureDao {
+  static final TreasureApi _api = TreasureApi();
+  static bool _initialized = false;
 
-const loginUrl = '${urlBase}api/treasure/login';
-const registerUrl = '${urlBase}api/treasure/register';
-const tokenUrl = '${urlBase}api/trip/getUploadToken';
-const poMicroURL = '${urlBase}api/treasure/newItem';
-const allToies = '${urlBase}api/treasure/getAllTreasures?page=';
-const totalPriceAndCount = '${urlBase}api/treasure/getTotalPriceAndCount?uid=';
-const search = '${urlBase}api/treasure/search?keyword=';
-const modifyURL = '${urlBase}api/treasure/modify';
-const deleteURL = '${urlBase}api/treasure/delete';
+  static void _ensureInitialized() {
+    if (!_initialized) {
+      _api.initialize(isDevelopMode: AppConfig.isDevelopment);
+      _initialized = true;
+    }
+  }
 
-class TreasureDao{
-  static Future register(data) async{
-    final response = await Dio().post(registerUrl, data:data);
-    if (response.statusCode == 200) {
-      if(response.data == '此用户名已经注册！'){
-        return '此用户名已经注册！';
-      }if(response.data == '未授权！'){
-        return '未授权！';
-      }else {
-        return OwnerModel.fromJson(response.data);
-      } 
-    } else if(response.statusCode == 401){
-      //print(401);
-      return '授权码错误！';
-    } else {
+  static Future register(Map<String, dynamic> data) async {
+    _ensureInitialized();
+    try {
+      final response = await _api.register(data);
+      if (response.isSuccess) {
+        return response.data;
+      } else {
+        if (response.statusCode == 401) {
+          return '授权码错误！';
+        }
+        return response.message;
+      }
+    } on NetworkException catch (e) {
+      if (e is UnauthorizedException) {
+        return '授权码错误！';
+      }
+      throw Exception('Network Error: ${e.message}');
+    } catch (e) {
       throw Exception('Failed to load data!');
     }
   }
 
-  static Future login(data) async{
-    final response = await Dio().post(loginUrl, data:data);
-    if(response.data == ''){
+  static Future login(Map<String, dynamic> data) async {
+    _ensureInitialized();
+    try {
+      final response = await _api.login(data);
+      if (response.isSuccess) {
+        return response.data ?? OwnerModel();
+      } else {
+        return OwnerModel();
+      }
+    } on NetworkException catch (e) {
+      throw Exception('Network Error: ${e.message}');
+    } catch (e) {
       return OwnerModel();
-    }else {
-      return OwnerModel.fromJson(response.data);
-    } 
+    }
   }
 
-  static Future getToken(string) async{
-    final token = await Dio().get('$tokenUrl?type=$string');
-    return token.data;
-  }
-
-  static Future poMicro(data)async {
-    final response = await Dio().post(poMicroURL, data:data);
-    if(response.data != null){
-      return response.data;
-    }else {
+  static Future getToken(String type) async {
+    _ensureInitialized();
+    try {
+      final response = await _api.getToken(type);
+      if (response.isSuccess) {
+        return response.data;
+      } else {
+        throw Exception('Failed to get token');
+      }
+    } on NetworkException catch (e) {
+      throw Exception('Network Error: ${e.message}');
+    } catch (e) {
       throw Exception('NetWork Error!');
     }
   }
 
-  static Future<AllToysModel> searchToies(string, uid)async {
-    final response = await Dio().get('$search$string&uid=$uid');
-    if(response.data != null){
-      return AllToysModel.fromJson(response.data);
-    }else {
+  static Future poMicro(Map<String, dynamic> data) async {
+    _ensureInitialized();
+    try {
+      final response = await _api.createToy(data);
+      if (response.isSuccess) {
+        return response.data;
+      } else {
+        throw Exception('Failed to create toy');
+      }
+    } on NetworkException catch (e) {
+      throw Exception('Network Error: ${e.message}');
+    } catch (e) {
       throw Exception('NetWork Error!');
     }
   }
 
-  static Future<AllToysModel> getAllToies(index, uid)async {
-    final response = await Dio().get('$allToies$index&uid=$uid');
-    if(response.data != null){
-      return AllToysModel.fromJson(response.data);
-    }else {
+  static Future<AllToysModel> searchToies(String keyword, String uid) async {
+    _ensureInitialized();
+    try {
+      final response = await _api.searchToys(keyword, uid);
+      if (response.isSuccess) {
+        return response.data!;
+      } else {
+        throw Exception('Search failed');
+      }
+    } on NetworkException catch (e) {
+      throw Exception('Network Error: ${e.message}');
+    } catch (e) {
       throw Exception('NetWork Error!');
     }
   }
 
-  static Future getTotalPriceAndCount(uid)async {
-    final response = await Dio().get('$totalPriceAndCount$uid');
-    if(response.data != null){
-      return PriceCountModel.fromJson(response.data);
-    }else {
+  static Future<AllToysModel> getAllToies(int page, String uid) async {
+    _ensureInitialized();
+    try {
+      final response = await _api.getAllToys(page, uid);
+      if (response.isSuccess) {
+        return response.data!;
+      } else {
+        throw Exception('Failed to get toys');
+      }
+    } on NetworkException catch (e) {
+      throw Exception('Network Error: ${e.message}');
+    } catch (e) {
       throw Exception('NetWork Error!');
     }
   }
 
-  static Future modifyToy(data) async {
-    final response = await Dio().post(modifyURL, data:data);
-    if(response.data != null){
-      return response.data;
-    }else {
+  static Future getTotalPriceAndCount(String uid) async {
+    _ensureInitialized();
+    try {
+      final response = await _api.getTotalPriceAndCount(uid);
+      if (response.isSuccess) {
+        return response.data!;
+      } else {
+        throw Exception('Failed to get total price and count');
+      }
+    } on NetworkException catch (e) {
+      throw Exception('Network Error: ${e.message}');
+    } catch (e) {
       throw Exception('NetWork Error!');
     }
   }
 
-  static Future deleteToy(id, key) async {
-    final response = await Dio().post(deleteURL, data:{ 'id': id,  'key': key});
-    if(response.data != null){
-      return ResultModel.fromJson(response.data);
-    }else {
+  static Future modifyToy(Map<String, dynamic> data) async {
+    _ensureInitialized();
+    try {
+      final response = await _api.modifyToy(data);
+      if (response.isSuccess) {
+        return response.data;
+      } else {
+        throw Exception('Failed to modify toy');
+      }
+    } on NetworkException catch (e) {
+      throw Exception('Network Error: ${e.message}');
+    } catch (e) {
+      throw Exception('NetWork Error!');
+    }
+  }
+
+  static Future deleteToy(String id, String key) async {
+    _ensureInitialized();
+    try {
+      final response = await _api.deleteToy(id, key);
+      if (response.isSuccess) {
+        return response.data!;
+      } else {
+        throw Exception('Failed to delete toy');
+      }
+    } on NetworkException catch (e) {
+      throw Exception('Network Error: ${e.message}');
+    } catch (e) {
       throw Exception('NetWork Error!');
     }
   }

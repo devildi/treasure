@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:treasure/pages/register.dart';
 import 'package:treasure/dao.dart';
-import 'package:treasure/store.dart';
 import 'package:treasure/tools.dart';
 import 'package:treasure/toy_model.dart';
+import 'package:treasure/core/state/state_manager.dart';
+import 'package:treasure/core/navigation/page_transitions.dart';
 
 class Login extends StatefulWidget {
   const Login({
@@ -66,9 +66,13 @@ class LoginState extends State<Login> with AutomaticKeepAliveClientMixin{
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth', json.encode(res));
         if (!context.mounted) return;
-        Provider.of<UserData>(context, listen: false).setUserData(res);
+        // 使用新的状态管理系统设置用户数据
+        final userState = StateManager.userState(context);
+        await userState.login(res);
         _controller.dispose();
-        CommonUtils.showSnackBar(context, '登录成功！', backgroundColor: Colors.green);
+        if (mounted) {
+          CommonUtils.showSnackBar(context, '登录成功！', backgroundColor: Colors.green);
+        }
       }
     } catch(err){
       debugPrint(err.toString());
@@ -90,11 +94,11 @@ class LoginState extends State<Login> with AutomaticKeepAliveClientMixin{
   }
 
   void jump2register(){
-    Navigator.pushReplacement(
+    AppNavigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) => const Register(),
-      ),
+      const Register(),
+      type: PageTransitionType.slideScale,
+      direction: SlideDirection.fromRight,
     );
   }
 
