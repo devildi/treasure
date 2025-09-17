@@ -74,6 +74,7 @@ class CommonUtils {
   }
   static void showDetail(BuildContext context, int startIndex, toies, fn) {
     final double dialogWidth = MediaQuery.of(context).size.width - 40;
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -91,14 +92,13 @@ class CommonUtils {
             loop: false,
             index: startIndex,
             itemBuilder: (context, index) {
-            return StatefulBuilder(
-              builder: (context, setState) {
-                return ToyDetailCard(
-                  toy: toies[index],
-                  dialogWidth: dialogWidth,
-                  getMore: fn
-                );
-                }
+              return ToyDetailCard(
+                key: ValueKey('toy_detail_${toies[index].id}_${DateTime.now().millisecondsSinceEpoch}'),
+                toy: toies[index],
+                dialogWidth: dialogWidth,
+                getMore: fn,
+                toyList: toies,
+                toyIndex: index,
               );
             },
             // Swiper配置

@@ -61,15 +61,18 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
                   await StorageService.instance.cleanupStorage();
                 }
                 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('缓存清理完成')),
-                );
-                
-                await _loadStorageInfo();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('缓存清理完成')),
+                  );
+                  await _loadStorageInfo();
+                }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('清理失败: $e')),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('清理失败: $e')),
+                  );
+                }
               }
             },
             child: const Text('确定'),
@@ -97,15 +100,18 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
               try {
                 await StorageService.instance.clearCache(allCache: true);
                 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('离线数据已清空')),
-                );
-                
-                await _loadStorageInfo();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('离线数据已清空')),
+                  );
+                  await _loadStorageInfo();
+                }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('清空失败: $e')),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('清空失败: $e')),
+                  );
+                }
               }
             },
             child: const Text('确定'),

@@ -26,7 +26,6 @@ class ProfilePageState extends State<ProfilePage> {
 
   final ScrollController _controller = ScrollController();
   int _currentPage = 0;
-  int _previousItemCount = 0;
   bool _isLoading = false;
 
   void _scrollListener() {
@@ -41,8 +40,7 @@ class ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _previousItemCount = widget.toies.length;
-    _controller.addListener(_scrollListener);
+        _controller.addListener(_scrollListener);
   }
 
   @override
@@ -57,8 +55,7 @@ class ProfilePageState extends State<ProfilePage> {
       if (_isLoading) {
         setState(() {
           _isLoading = false;
-          _previousItemCount = widget.toies.length;
-        });
+                  });
         
         // 恢复滚动位置
         if (_controller.hasClients) {
@@ -95,8 +92,7 @@ class ProfilePageState extends State<ProfilePage> {
       setState(() {
         _isLoading = false;
         _currentPage = currentPage + 1;
-        _previousItemCount = widget.toies.length;
-      });
+              });
       
       StateManager.uiState(context).setComponentLoading('profile_load_more', false);
       

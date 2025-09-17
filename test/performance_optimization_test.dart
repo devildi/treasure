@@ -99,7 +99,7 @@ void main() {
         final initialCount = memoryOptimizer.activeWidgetCount;
         
         // 模拟添加widget引用
-        final dummyWidget = const SizedBox();
+        const dummyWidget = SizedBox();
         memoryOptimizer.trackWidget(dummyWidget);
         
         expect(memoryOptimizer.activeWidgetCount, greaterThan(initialCount));
@@ -116,7 +116,7 @@ void main() {
       });
 
       test('should format statistics correctly', () {
-        final stats = MemoryUsageStats(
+        const stats = MemoryUsageStats(
           activeCacheCount: 10,
           totalCacheCount: 15,
           activeWidgetCount: 5,
@@ -141,7 +141,7 @@ void main() {
 
       test('should record widget build times', () {
         const widgetName = 'TestWidget';
-        final buildTime = const Duration(milliseconds: 25);
+        const buildTime = Duration(milliseconds: 25);
         
         widgetOptimizer.recordWidgetBuildTime(widgetName, buildTime);
         
@@ -228,7 +228,7 @@ void main() {
         performanceManager.recordMetric('api_call', 150.0);
         performanceManager.recordMetric('image_load', 80.0);
         
-        final dummyWidget = const SizedBox();
+        const dummyWidget = SizedBox();
         memoryOptimizer.trackWidget(dummyWidget);
         
         widgetOptimizer.recordWidgetBuildTime('HomePage', const Duration(milliseconds: 25));

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class OwnerModel {
   final String name;
   final String uid;
@@ -13,8 +15,8 @@ class OwnerModel {
 
   factory OwnerModel.fromJson(Map<String, dynamic> json) {
     return OwnerModel(
-      name: json["name"],
-      uid: json["_id"],
+      name: json["name"] ?? '',
+      uid: json["_id"] ?? '',
       avatar: json["avatar"] ?? '',
       family: json["family"] ?? '',
     );
@@ -40,10 +42,32 @@ class PriceCountModel {
   });
 
   factory PriceCountModel.fromJson(Map<String, dynamic> json) {
-    return PriceCountModel(
-      totalPrice: json["totalPrice"],
-      count: json["count"],
-    );
+    try {
+      return PriceCountModel(
+        totalPrice: _safeToDouble(json["totalPrice"]),
+        count: json["count"] ?? 0,
+      );
+    } catch (e) {
+      debugPrint('❌ PriceCountModel.fromJson 解析失败: $e');
+      debugPrint('📄 JSON数据: $json');
+      rethrow;
+    }
+  }
+
+  // 安全的数字转换方法
+  static double _safeToDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        debugPrint('⚠️ 无法解析数字字符串: $value');
+        return 0.0;
+      }
+    }
+    return 0.0;
   }
 
   Map<String, dynamic> toJson() {
@@ -66,11 +90,33 @@ class ResultModel {
   });
 
   factory ResultModel.fromJson(Map<String, dynamic> json) {
-    return ResultModel(
-      ok: json["ok"],
-      n: json["n"],
-      deletedCount: json["deletedCount"],
-    );
+    try {
+      return ResultModel(
+        ok: _safeToInt(json["ok"]),
+        n: _safeToInt(json["n"]),
+        deletedCount: _safeToInt(json["deletedCount"]),
+      );
+    } catch (e) {
+      debugPrint('❌ ResultModel.fromJson 解析失败: $e');
+      debugPrint('📄 JSON数据: $json');
+      rethrow;
+    }
+  }
+
+  // 安全的整数转换方法
+  static int _safeToInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) {
+      try {
+        return int.parse(value);
+      } catch (e) {
+        debugPrint('⚠️ 无法解析整数字符串: $value');
+        return 0;
+      }
+    }
+    return 0;
   }
 
   Map<String, dynamic> toJson() {
@@ -86,6 +132,7 @@ class ToyModel {
   String id;
   String toyName;
   String toyPicUrl;
+  String localUrl;
   num picWidth;
   num picHeight;
   String description;
@@ -99,9 +146,10 @@ class ToyModel {
 
   ToyModel({
     this.id = '',
-    this.toyName = '', 
-    this.toyPicUrl = '', 
-    this.picWidth = 0, 
+    this.toyName = '',
+    this.toyPicUrl = '',
+    this.localUrl = '',
+    this.picWidth = 0,
     this.picHeight = 0,
     this.description = '',
     this.labels = '',
@@ -114,34 +162,80 @@ class ToyModel {
   });
 
   factory ToyModel.fromJson(Map<String, dynamic> json) {
-    
-    return ToyModel(
-      id: json['_id'] ?? '',
-      toyName : json['toyName'] ?? '',
-      toyPicUrl : json['toyPicUrl'] ?? '',
-      picWidth : json['picWidth'] ?? 0,
-      picHeight : json['picHeight'] ?? 0,
-      description : json['description']?? '',
-      labels : json['labels'] ?? '',
-      owner : json['owner'] != null ? OwnerModel.fromJson(json['owner']) : OwnerModel(),
-      price : json['price'] ?? 0,
-      sellPrice : json['sellPrice'] ?? 0,
-      isSelled: json["isSelled"] ?? false,
-      createAt: json["createAt"] ?? '',
-      sellAt: json["sellAt"] ?? '',
-    );
+    try {
+      return ToyModel(
+        id: json['_id'] ?? json['id'] ?? '',
+        toyName : json['toyName'] ?? '',
+        toyPicUrl : json['toyPicUrl'] ?? '',
+        localUrl : json['localUrl'] ?? '',
+        picWidth : _safeToDouble(json['picWidth']),
+        picHeight : _safeToDouble(json['picHeight']),
+        description : json['description']?? '',
+        labels : json['labels'] ?? '',
+        owner : _parseOwner(json['owner']),
+        price : _safeToDouble(json['price']),
+        sellPrice : _safeToDouble(json['sellPrice']),
+        isSelled: json["isSelled"] ?? false,
+        createAt: json["createAt"] ?? '',
+        sellAt: json["sellAt"] ?? '',
+      );
+    } catch (e) {
+      debugPrint('❌ ToyModel.fromJson 解析失败: $e');
+      debugPrint('📄 JSON数据: $json');
+      rethrow;
+    }
+  }
+
+  // 安全的owner解析方法
+  static OwnerModel _parseOwner(dynamic ownerData) {
+    // 如果为null，返回默认owner
+    if (ownerData == null) {
+      return OwnerModel();
+    }
+
+    // 如果不是Map，返回默认owner
+    if (ownerData is! Map<String, dynamic>) {
+      return OwnerModel();
+    }
+
+    // 检查Map是否包含有效数据（至少有一个非空字段）
+    final hasValidData = ownerData.values.any((value) =>
+        value != null && value.toString().trim().isNotEmpty);
+
+    if (!hasValidData) {
+      return OwnerModel();
+    }
+
+    return OwnerModel.fromJson(ownerData);
+  }
+
+  // 安全的数字转换方法
+  static double _safeToDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        debugPrint('⚠️ 无法解析数字字符串: $value');
+        return 0.0;
+      }
+    }
+    return 0.0;
   }
 
   Map<String, dynamic> toJson() =>
-    {  
+    {
       'id': id,
       'toyName': toyName,
       'toyPicUrl': toyPicUrl,
+      'localUrl': localUrl,
       'picWidth': picWidth,
       'picHeight': picHeight,
       'description': description,
       'labels': labels,
-      'owner': owner,
+      'owner': owner.toJson(),
       'price': price,
       'sellPrice': sellPrice,
       'isSelled': isSelled,

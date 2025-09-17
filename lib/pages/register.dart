@@ -79,12 +79,13 @@ class RegisterState extends State<Register> {
           return;
         } else {
           SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth', json.encode(res));
+          final authData = res is OwnerModel ? res.toJson() : res;
+          await prefs.setString('auth', json.encode(authData));
           if (!context.mounted) return;
           
           // 使用新的状态管理系统设置用户数据
           final userState = StateManager.userState(context);
-          final ownerModel = OwnerModel.fromJson(res);
+          final ownerModel = res is OwnerModel ? res : OwnerModel.fromJson(res as Map<String, dynamic>);
           await userState.login(ownerModel);
           
           if (!context.mounted) return;

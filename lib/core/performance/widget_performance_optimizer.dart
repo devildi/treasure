@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'performance_manager.dart';
 
 /// Widget性能优化器
@@ -143,7 +142,6 @@ class PerformantMasonryGrid extends StatefulWidget {
 class _PerformantMasonryGridState extends State<PerformantMasonryGrid> {
   final GlobalKey _containerKey = GlobalKey();
   final Map<int, GlobalKey> _itemKeys = {};
-  final Map<int, Size> _itemSizes = {};
   
   @override
   void initState() {
@@ -283,7 +281,7 @@ class _PerformantImageState extends State<PerformantImage>
     }
     
     return RepaintBoundary(
-      child: Container(
+      child: SizedBox(
         width: widget.width,
         height: widget.height,
         child: Image.network(
@@ -489,15 +487,14 @@ class _VisibilityAwareWidgetState extends State<VisibilityAwareWidget> {
 
 /// 简单的可见性检测器（如果没有visibility_detector包）
 class VisibilityDetector extends StatefulWidget {
-  final Key key;
   final Widget child;
   final Function(VisibilityInfo) onVisibilityChanged;
-  
+
   const VisibilityDetector({
-    required this.key,
+    super.key,
     required this.child,
     required this.onVisibilityChanged,
-  }) : super(key: key);
+  });
   
   @override
   State<VisibilityDetector> createState() => _VisibilityDetectorState();
@@ -508,7 +505,7 @@ class _VisibilityDetectorState extends State<VisibilityDetector> {
   Widget build(BuildContext context) {
     // 简化的可见性检测实现
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onVisibilityChanged(VisibilityInfo(visibleFraction: 1.0));
+      widget.onVisibilityChanged(const VisibilityInfo(visibleFraction: 1.0));
     });
     
     return widget.child;

@@ -127,19 +127,46 @@ class MainPageState extends State<MainPage> {
 
   void initData(page) async {
     try {
+      debugPrint('🔄 Main.initData: 开始刷新数据 (page: $page)...');
       final currentUser = StateManager.readUserState(context).currentUser;
+      debugPrint('👤 Main.initData: 当前用户 uid=${currentUser.uid}');
+
+      // 清除主页面相关缓存
+      debugPrint('🗑️ Main.initData: 清除缓存...');
+      await StorageService.instance.clearCachedApiResponse('toys_page_${page}_uid_${currentUser.uid}');
+      await StorageService.instance.clearCachedApiResponse('total_price_count_${currentUser.uid}');
+
+      debugPrint('📡 Main.initData: 请求服务器数据...');
       List<Future> tasks = [];
       tasks.add(TreasureDao.getAllToies(page, currentUser.uid));
       tasks.add(TreasureDao.getTotalPriceAndCount(currentUser.uid));
       List body = await Future.wait(tasks);
+
+      debugPrint('📝 Main.initData: 更新本地状态...');
+      debugPrint('   - 获得玩具数量: ${body[0].toyList.length}');
+      debugPrint('   - 总数量: ${body[1].count}');
+      debugPrint('   - 总价值: ${body[1].totalPrice}');
+
       setState(() {
         toyList = body[0].toyList;
         toyCount = body[1].count;
         totalValue = body[1].totalPrice.toDouble();
       });
+
+      debugPrint('📊 Main.initData: "我的"页面数据已更新');
+      debugPrint('   - toyList.length: ${toyList.length}');
+      debugPrint('   - toyCount: $toyCount');
+      debugPrint('   - totalValue: $totalValue');
+
+      // 通知HomePage数据已准备就绪，无需重新加载
+      debugPrint('🔄 Main.initData: 通知HomePage数据已就绪...');
+      HomePageHelper.notifyDataReady();
+
       if (!mounted) return;
       StateManager.readUIState(context).setComponentLoading('main_data', false);
+      debugPrint('✅ Main.initData: 数据刷新完成');
     } catch (e) {
+      debugPrint('❌ Main.initData: 数据刷新失败 - $e');
       if (!mounted) return;
       StateManager.readUIState(context).setNetworkStatus(false);
       StateManager.readUIState(context).setComponentLoading('main_data', false);
@@ -154,6 +181,7 @@ class MainPageState extends State<MainPage> {
   }
 
   void jump(user) async {
+    debugPrint('🚀 Main.jump: 打开编辑页面...');
     await AppNavigator.push(
       context,
       EditMicro(
@@ -163,8 +191,15 @@ class MainPageState extends State<MainPage> {
       type: PageTransitionType.slideScale,
       direction: SlideDirection.fromBottom,
     );
-    // 刷新数据
-    initData(1);
+
+    debugPrint('🔄 Main.jump: 编辑页面返回，强制刷新HomePage...');
+    // 页面返回后，强制刷新HomePage确保显示最新数据
+    await HomePageHelper.refreshHomePage();
+
+    setState(() {
+      // 触发UI刷新，确保任何状态变化都能正确显示
+    });
+    debugPrint('✅ Main.jump: 刷新完成');
   }
 
   void search(String keyword) async {
@@ -236,9 +271,11 @@ class MainPageState extends State<MainPage> {
                         },
                         children: [
                           HomePage(
+                            key: homePageKey,
                             searchToyList: searchToyList,
                             search: search,
                             clearSearch: clearSearch,
+                            onDataChanged: initData, // 传递数据变化回调
                           ),
                           ProfilePage(
                             user: currentUser,

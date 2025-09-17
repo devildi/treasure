@@ -76,6 +76,14 @@ class StorageService {
   Future<Map<String, dynamic>?> getCachedApiResponse(String endpoint) async {
     return await _cache.loadCache('api_$endpoint');
   }
+
+  /// 清除API响应缓存
+  Future<void> clearCachedApiResponse(String endpoint) async {
+    await _cache.deleteCache('api_$endpoint');
+    if (kDebugMode) {
+      debugPrint('🗑️ 已清除API缓存: api_$endpoint');
+    }
+  }
   
   /// 缓存图片元数据
   Future<void> cacheImageMetadata(
@@ -308,6 +316,26 @@ class StorageService {
     } catch (e) {
       debugPrint('❌ 导入离线数据失败: $e');
       return false;
+    }
+  }
+
+  /// 清除所有缓存
+  static Future<void> clearAllCaches() async {
+    try {
+      final service = StorageService.instance;
+      await service.initialize();
+
+      // 清除所有类型的缓存
+      await service.clearCache(
+        apiCache: true,
+        imageCache: true,
+        searchCache: true,
+        allCache: false, // 不清除本地存储，只清除缓存
+      );
+
+      debugPrint('🧹 StorageService: 所有缓存已清除');
+    } catch (e) {
+      debugPrint('⚠️ StorageService: 清除缓存失败 - $e');
     }
   }
 }

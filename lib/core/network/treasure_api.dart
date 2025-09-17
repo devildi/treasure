@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:treasure/toy_model.dart';
 import 'api_client.dart';
 import 'api_response.dart';
@@ -13,15 +14,21 @@ class TreasureApi {
     required bool isDevelopMode,
     String? baseUrl,
   }) {
-    final url = baseUrl ?? 
+    final url = baseUrl ??
         (isDevelopMode ? 'http://172.20.10.13:4000/' : 'https://nextsticker.cn/');
-    
+
+    debugPrint('🔧 TreasureApi.initialize: 配置API客户端');
+    debugPrint('🔧 TreasureApi.initialize: baseUrl = $url');
+    debugPrint('🔧 TreasureApi.initialize: isDevelopMode = $isDevelopMode');
+
     _apiClient.initialize(
       baseUrl: url,
       connectTimeout: 15000,
       receiveTimeout: 15000,
       sendTimeout: 15000,
     );
+
+    debugPrint('✅ TreasureApi.initialize: API客户端配置完成');
   }
 
   // Authentication APIs
@@ -120,14 +127,19 @@ class TreasureApi {
 
   // Toy APIs
   Future<ApiResponse<AllToysModel>> getAllToys(int page, String uid) async {
+    debugPrint('🚀 TreasureApi.getAllToys: 开始请求 (page=$page, uid=$uid)');
     try {
+      debugPrint('🚀 TreasureApi.getAllToys: 调用 _apiClient.get...');
       final response = await _apiClient.get<dynamic>(
         'api/treasure/getAllTreasures',
         queryParameters: {'page': page, 'uid': uid},
         fromJson: (data) => AllToysModel.fromJson(data as List),
       );
-      
+
+      debugPrint('📨 TreasureApi.getAllToys: _apiClient响应完成 (success=${response.isSuccess}, statusCode=${response.statusCode})');
+
       if (response.isSuccess && response.data != null) {
+        debugPrint('✅ TreasureApi.getAllToys: 返回成功响应');
         return ApiResponse.success(
           data: response.data as AllToysModel,
           statusCode: response.statusCode,
@@ -236,26 +248,34 @@ class TreasureApi {
   }
 
   Future<ApiResponse<ResultModel>> deleteToy(String id, String key) async {
+    debugPrint('🗑️ TreasureApi.deleteToy: 开始删除 (id=$id, key=$key)');
     try {
+      debugPrint('🗑️ TreasureApi.deleteToy: 调用 _apiClient.post...');
       final response = await _apiClient.post<dynamic>(
         'api/treasure/delete',
         data: {'id': id, 'key': key},
         fromJson: (data) => ResultModel.fromJson(data as Map<String, dynamic>),
       );
-      
+
+      debugPrint('📨 TreasureApi.deleteToy: _apiClient响应完成 (success=${response.isSuccess}, statusCode=${response.statusCode})');
+
       if (response.isSuccess && response.data != null) {
+        final result = response.data as ResultModel;
+        debugPrint('✅ TreasureApi.deleteToy: 删除成功 (deletedCount=${result.deletedCount})');
         return ApiResponse.success(
-          data: response.data as ResultModel,
+          data: result,
           statusCode: response.statusCode,
           message: response.message,
         );
       }
-      
+
+      debugPrint('❌ TreasureApi.deleteToy: 响应失败或数据为空');
       return ApiResponse.error(
         statusCode: response.statusCode,
         message: response.message,
       );
     } catch (e) {
+      debugPrint('❌ TreasureApi.deleteToy: 异常 - $e');
       return ApiResponse.error(
         statusCode: 500,
         message: e.toString(),

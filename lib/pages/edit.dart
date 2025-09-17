@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:qiniu_flutter_sdk/qiniu_flutter_sdk.dart';
 import 'package:treasure/toy_model.dart';
 import 'package:treasure/dao.dart';
+import 'package:treasure/pages/toy.dart';
 
 class EditMicro extends StatefulWidget {
   final OwnerModel user;
@@ -17,6 +18,27 @@ class EditMicro extends StatefulWidget {
   }): super(key: key);
   @override
   EditMicroState createState() => EditMicroState();
+
+  // 静态方法用于后台刷新，避免依赖实例状态
+  static Future<void> _performBackgroundRefresh(Function initData) async {
+    try {
+      debugPrint('🔄 Edit: 开始后台数据刷新...');
+
+      // 给服务器一点处理时间，但不阻塞用户界面
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      // 并行执行刷新操作以提高效率
+      await Future.wait([
+        HomePageHelper.refreshHomePage(), // 刷新HomePage
+        Future.delayed(const Duration(milliseconds: 100))
+            .then((_) => initData(1)), // 稍微延迟刷新主页面统计
+      ]);
+
+      debugPrint('✅ Edit: 后台数据刷新完成');
+    } catch (e) {
+      debugPrint('❌ Edit: 后台刷新失败，但不影响用户体验 - $e');
+    }
+  }
 }
 
 class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin{
@@ -49,11 +71,50 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
     _controller3.dispose();
   }
 
+  // 检查网络连接状态
+  Future<bool> _checkNetworkConnection() async {
+    try {
+      final result = await InternetAddress.lookup('baidu.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (e) {
+      debugPrint('网络检查失败: $e');
+      return false;
+    }
+  }
+
   void upToServer(body) async{
+    // 检查 body 是否为空或包含空元素
+    if (body == null || body.isEmpty) {
+      if (mounted) {
+        setState(() {
+          uploading = false;
+        });
+        CommonUtils.showSnackBar(context, '上传失败，请重试！');
+      }
+      return;
+    }
+
+    // 检查第一个元素是否为空（主要用于获取关键信息）
+    if (body[0] == null) {
+      if (mounted) {
+        setState(() {
+          uploading = false;
+        });
+        CommonUtils.showSnackBar(context, '图片上传失败，请重试！');
+      }
+      return;
+    }
+
     List picArr = [];
     for (var i = 0; i < body.length; i++) {
-      picArr.add(body[i].toJson());
+      // 添加空值检查
+      if (body[i] != null) {
+        picArr.add(body[i].toJson());
+      } else {
+        debugPrint('Warning: body[$i] is null, skipping...');
+      }
     }
+
     try{
       dynamic res = await TreasureDao.poMicro({
         'toyName': toyName,
@@ -66,96 +127,142 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
         'price': price,
       });
       if(res != null){
-        setState(() {
-          uploading = false;
+        debugPrint('✅ Edit: 发布成功，开始执行刷新...');
+        if (mounted) {
+          // 1. 停止loading状态
+          setState(() {
+            uploading = false;
+          });
+
+          // 2. 立即返回页面提供即时反馈
           Navigator.of(context).pop();
           CommonUtils.showSnackBar(context, '发布成功！');
-        });
-        await widget.initData(1);
+          debugPrint('✅ Edit: 立即返回页面，提供即时反馈');
+
+          // 3. 在后台异步执行数据刷新（不阻塞用户界面）
+          unawaited(EditMicro._performBackgroundRefresh(widget.initData));
+        }
+      } else {
+        debugPrint('❌ Edit: 发布失败，res为null');
       }
     }catch(err){
       debugPrint(err.toString());
-      setState(() {
-        uploading = false;
+      if (mounted) {
+        setState(() {
+          uploading = false;
+        });
         CommonUtils.showSnackBar(context, '发布失败，请稍后再试！');
-      });
+      }
     }
   }
 
   Future startUploadToQiniu(token, path, flag) async{
-    debugPrint('创建 PutController');
-    putController = PutController();
-    debugPrint('添加实际发送进度订阅');
-    putController.addSendProgressListener((double percent) {
-      debugPrint('已上传进度变化：已发送：$percent');
-    });
-    debugPrint('添加任务进度订阅');
-    putController.addProgressListener((double percent) {
-      debugPrint('任务进度变化：已发送：$percent');
-      setState(() {
-        progress = percent;
+    try {
+      debugPrint('=== 开始七牛云上传 ===');
+      debugPrint('Token: ${token?.substring(0, 50) ?? 'null'}...');
+      debugPrint('文件路径: $path');
+      debugPrint('上传方式: ${flag ? 'Bytes' : 'File'}');
+
+      // 验证token不为空
+      if (token == null || token.isEmpty) {
+        debugPrint('错误: Token为空或null');
+        return null;
+      }
+
+      // 验证文件路径
+      if (!flag) {
+        final file = File(path);
+        if (!await file.exists()) {
+          debugPrint('错误: 文件不存在 - $path');
+          return null;
+        }
+        debugPrint('文件大小: ${await file.length()} bytes');
+      }
+
+      debugPrint('创建 PutController');
+      putController = PutController();
+
+      debugPrint('添加进度监听器');
+      putController.addSendProgressListener((double percent) {
+        debugPrint('发送进度: ${(percent * 100).toStringAsFixed(1)}%');
       });
-    });
-    debugPrint('添加状态订阅');
-    putController.addStatusListener((StorageStatus status) {
-      debugPrint('状态变化: 当前任务状态：$status');
-    });
-    debugPrint('开始上传文件');
-    final putOptions = PutOptions(
-      controller: putController
-    );
-    Future<PutResponse> upload;
-    if(flag){
-      upload = storage.putBytes(
-        path,
-        token,
-        options: putOptions,
-      );
-    }else{
-      upload = storage.putFile(
-        File(path),
-        token,
-        options: putOptions,
-      );
-    }
-    try{
+
+      putController.addProgressListener((double percent) {
+        debugPrint('总进度: ${(percent * 100).toStringAsFixed(1)}%');
+        if (mounted) {
+          setState(() {
+            progress = percent;
+          });
+        }
+      });
+
+      putController.addStatusListener((StorageStatus status) {
+        debugPrint('状态变化: $status');
+      });
+
+      final putOptions = PutOptions(controller: putController);
+      Future<PutResponse> upload;
+
+      debugPrint('开始上传文件...');
+      if(flag){
+        upload = storage.putBytes(path, token, options: putOptions);
+      } else {
+        upload = storage.putFile(File(path), token, options: putOptions);
+      }
+
       PutResponse response = await upload;
-      debugPrint('上传已完成: 原始响应数据: ${response.rawData}');
-      debugPrint('------------------------');
+      debugPrint('✅ 上传成功！');
+      debugPrint('响应数据: ${response.rawData}');
+
+      // 验证响应数据
+      if (response.rawData.isEmpty) {
+        debugPrint('错误: 响应数据为空');
+        return null;
+      }
+
       ReturnBody body = ReturnBody.fromJson(response.rawData);
+      debugPrint('解析后的数据: key=${body.key}, width=${body.width}, height=${body.height}');
+      debugPrint('=== 上传完成 ===');
+
       return body;
-    } catch(error){
+
+    } catch(error) {
+      debugPrint('=== 上传失败 ===');
+      debugPrint('错误类型: ${error.runtimeType}');
+
       if (error is StorageError) {
         switch (error.type) {
           case StorageErrorType.CONNECT_TIMEOUT:
-            debugPrint('发生错误: 连接超时');
+            debugPrint('❌ 错误: 连接超时 - 请检查网络连接');
             break;
           case StorageErrorType.SEND_TIMEOUT:
-            debugPrint('发生错误: 发送数据超时');
+            debugPrint('❌ 错误: 发送数据超时 - 文件可能过大或网络不稳定');
             break;
           case StorageErrorType.RECEIVE_TIMEOUT:
-            debugPrint('发生错误: 响应数据超时');
+            debugPrint('❌ 错误: 响应数据超时 - 服务器响应慢');
             break;
           case StorageErrorType.RESPONSE:
-            debugPrint('发生错误: ${error.message}');
+            debugPrint('❌ 错误: 服务器响应错误 - ${error.message}');
             break;
           case StorageErrorType.CANCEL:
-            debugPrint('发生错误: 请求取消');
+            debugPrint('❌ 错误: 请求取消');
             break;
           case StorageErrorType.UNKNOWN:
-            debugPrint('发生错误: 未知错误');
+            debugPrint('❌ 错误: 未知错误 - ${error.message}');
             break;
           case StorageErrorType.NO_AVAILABLE_HOST:
-            debugPrint('发生错误: 无可用 Host');
+            debugPrint('❌ 错误: 无可用主机 - 请检查网络配置');
             break;
           case StorageErrorType.IN_PROGRESS:
-            debugPrint('发生错误: 已在队列中');
+            debugPrint('❌ 错误: 任务已在进行中');
             break;
         }
       } else {
-        debugPrint('发生错误: ${error.toString()}');
+        debugPrint('❌ 其他错误: ${error.toString()}');
       }
-      debugPrint('------------------------');
+
+      debugPrint('=== 错误处理完成 ===');
+      return null;
     }
   }
 
@@ -277,13 +384,87 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
       return;
     }
     FocusScope.of(context).unfocus();
-    String token = await TreasureDao.getToken('string');
-    setState(() {
-      uploading = true;
-    });
-    tasks.add(startUploadToQiniu(token, medias[0].path, false));
-    List body = await Future.wait(tasks);
-    upToServer(body);
+
+    try {
+      // 首先检查网络连接
+      debugPrint('检查网络连接...');
+      final hasNetwork = await _checkNetworkConnection();
+      if (!hasNetwork) {
+        if (mounted) {
+          setState(() {
+            uploading = false;
+          });
+          CommonUtils.showSnackBar(context, '网络连接失败，请检查网络设置后重试！');
+        }
+        return;
+      }
+
+      debugPrint('开始获取上传token...');
+      String token = await TreasureDao.getToken('upload'); // 修改为正确的token类型
+      debugPrint('Token获取成功: ${token.substring(0, 20)}...');
+
+      setState(() {
+        uploading = true;
+      });
+
+      // 验证文件是否存在
+      final file = File(medias[0].path);
+      if (!await file.exists()) {
+        debugPrint('文件不存在: ${medias[0].path}');
+        if (mounted) {
+          setState(() {
+            uploading = false;
+          });
+          CommonUtils.showSnackBar(context, '选择的图片文件不存在，请重新选择！');
+        }
+        return;
+      }
+
+      debugPrint('开始上传图片: ${medias[0].path}');
+      debugPrint('文件大小: ${await file.length()} bytes');
+
+      // 清空之前的任务
+      tasks.clear();
+      tasks.add(startUploadToQiniu(token, medias[0].path, false));
+      List body = await Future.wait(tasks);
+
+      debugPrint('上传完成，结果数量: ${body.length}');
+      for (int i = 0; i < body.length; i++) {
+        debugPrint('body[$i]: ${body[i]}');
+      }
+
+      // 检查上传结果
+      if (body.isEmpty || body.every((element) => element == null)) {
+        debugPrint('上传结果为空或全部为null');
+        if (mounted) {
+          setState(() {
+            uploading = false;
+          });
+          CommonUtils.showSnackBar(context, '图片上传失败，请检查网络连接后重试！');
+        }
+        return;
+      }
+
+      debugPrint('上传成功，开始提交到服务器...');
+      upToServer(body);
+    } catch (e) {
+      debugPrint('Submit error: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+      String errorMessage = '提交失败，请重试！';
+
+      if (e.toString().contains('Failed to get token')) {
+        errorMessage = '获取上传凭证失败，请检查网络连接！';
+      } else if (e.toString().contains('Network Error')) {
+        errorMessage = '网络连接失败，请检查网络设置！';
+      }
+
+      if (mounted) {
+        setState(() {
+          uploading = false;
+        });
+        CommonUtils.showSnackBar(context, errorMessage);
+      }
+    }
   }
 
   void _nameChanged(String str){

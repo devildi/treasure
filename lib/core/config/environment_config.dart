@@ -1,20 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'app_config.dart';
 
 class EnvironmentConfig {
   // 在这里修改环境，重新编译即可切换
-  static const Environment currentEnv = Environment.development;
+  static const Environment currentEnv = Environment.production;
   
   static void configureApp() {
     // 可以根据环境设置不同的配置
     switch (currentEnv) {
       case Environment.development:
-        print('🔧 Running in DEVELOPMENT mode');
+        debugPrint('🔧 Running in DEVELOPMENT mode');
         break;
       case Environment.staging:
-        print('🧪 Running in STAGING mode');
+        debugPrint('🧪 Running in STAGING mode');
         break;
       case Environment.production:
-        print('🚀 Running in PRODUCTION mode');
+        debugPrint('🚀 Running in PRODUCTION mode');
         break;
     }
   }

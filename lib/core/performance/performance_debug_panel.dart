@@ -233,7 +233,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            Container(
+            SizedBox(
               height: 200,
               child: CustomPaint(
                 painter: MetricsChartPainter(_performanceReport!.metrics),
@@ -267,7 +267,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            Container(
+            SizedBox(
               height: 200,
               child: CustomPaint(
                 painter: MemoryChartPainter(_performanceReport!.memorySnapshots),
