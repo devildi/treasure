@@ -401,7 +401,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
 
       debugPrint('开始获取上传token...');
       String token = await TreasureDao.getToken('upload'); // 修改为正确的token类型
-      debugPrint('Token获取成功: ${token.substring(0, 20)}...');
+      debugPrint('Token获取成功: $token');
 
       setState(() {
         uploading = true;

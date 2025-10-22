@@ -57,20 +57,78 @@ class TreasureDao {
     }
   }
 
-  static Future getToken(String type) async {
+  static Future<String> getToken(String type) async {
     _ensureInitialized();
     try {
       final response = await _api.getToken(type);
       if (response.isSuccess) {
-        return response.data;
+        final token = _extractUploadToken(response.data);
+        if (token != null && token.isNotEmpty) {
+          return token;
+        }
+        throw Exception('Invalid upload token payload');
       } else {
-        throw Exception('Failed to get token');
+        throw Exception('Failed to get token: ${response.message}');
       }
     } on NetworkException catch (e) {
       throw Exception('Network Error: ${e.message}');
     } catch (e) {
       throw Exception('NetWork Error!');
     }
+  }
+
+  static String? _extractUploadToken(dynamic payload) {
+    if (payload == null) {
+      return null;
+    }
+
+    if (payload is String) {
+      final trimmed = payload.trim();
+      // 七牛上传凭证格式为 <AccessKey>:<encoded>
+      if (trimmed.isNotEmpty && trimmed.contains(':')) {
+        return trimmed;
+      }
+      return null;
+    }
+
+    if (payload is Map) {
+      const preferredKeys = [
+        'token',
+        'uploadToken',
+        'upload_token',
+        'uptoken',
+        'upToken',
+        'credentials',
+        'data',
+      ];
+
+      for (final key in preferredKeys) {
+        if (payload.containsKey(key)) {
+          final candidate = _extractUploadToken(payload[key]);
+          if (candidate != null) {
+            return candidate;
+          }
+        }
+      }
+
+      for (final entry in payload.entries) {
+        final candidate = _extractUploadToken(entry.value);
+        if (candidate != null) {
+          return candidate;
+        }
+      }
+    }
+
+    if (payload is Iterable) {
+      for (final item in payload) {
+        final candidate = _extractUploadToken(item);
+        if (candidate != null) {
+          return candidate;
+        }
+      }
+    }
+
+    return null;
   }
 
   static Future poMicro(Map<String, dynamic> data) async {
