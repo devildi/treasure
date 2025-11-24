@@ -3,6 +3,7 @@ import 'package:treasure/toy_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:treasure/components/common_image.dart';
 import 'package:treasure/core/state/state_manager.dart';
+import 'package:treasure/components/interactive_feedback.dart';
 
 class ProfilePage extends StatefulWidget {
   final OwnerModel user;
@@ -10,12 +11,14 @@ class ProfilePage extends StatefulWidget {
   final int toyCount;
   final double totalValue;
   final Function getMore;
+  final VoidCallback? onBack;
   const ProfilePage({
     required this.user,
     required this.toies,
     required this.toyCount,
     required this.totalValue,
     required this.getMore,
+    this.onBack,
     Key? key
     }) : super(key: key);
   @override
@@ -25,7 +28,7 @@ class ProfilePage extends StatefulWidget {
 class ProfilePageState extends State<ProfilePage> {
 
   final ScrollController _controller = ScrollController();
-  int _currentPage = 0;
+  int _currentPage = 1; // 已有首页数据，从第2页开始加载
   bool _isLoading = false;
 
   void _scrollListener() {
@@ -243,6 +246,7 @@ class ProfilePageState extends State<ProfilePage> {
             Stack(
               children: [
                 Container(
+                  margin: const EdgeInsets.only(top: 20),
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
                   decoration: BoxDecoration(
@@ -294,6 +298,17 @@ class ProfilePageState extends State<ProfilePage> {
                         ],
                       ),
                     ],
+                  ),
+                ),
+                Positioned(
+                  top: 40,
+                  left: 8,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new),
+                    onPressed: () {
+                      InteractiveFeedback.hapticFeedback();
+                      widget.onBack?.call();
+                    },
                   ),
                 ),
                 // 登出按钮

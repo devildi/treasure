@@ -12,7 +12,7 @@ class AppConfig {
   static String get baseUrl {
     switch (_currentEnvironment) {
       case Environment.development:
-        return 'http://172.20.10.13:4000/';
+        return 'http://10.96.162.50:4000/';
       case Environment.staging:
         return 'https://staging.nextsticker.cn/';
       case Environment.production:

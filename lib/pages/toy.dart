@@ -12,17 +12,21 @@ import 'package:treasure/core/performance/performance_manager.dart';
 import 'package:treasure/core/network/cache_interceptor.dart';
 
 class HomePage extends StatefulWidget {
-  final List searchToyList;
-  final Function search;
-  final Function clearSearch;
+  final List<ToyModel> searchToyList;
+  final Future<List<ToyModel>> Function(String keyword) search;
+  final VoidCallback clearSearch;
+  final Function(List<ToyModel>)? onSearchResults;
   final Function(int)? onDataChanged; // 新增：数据变化回调
+  final VoidCallback? onOpenProfile;
 
   const HomePage({
     Key? key,
     required this.searchToyList,
     required this.search,
     required this.clearSearch,
+    this.onSearchResults,
     this.onDataChanged, // 可选的数据变化回调
+    this.onOpenProfile,
   }) : super(key: key);
 
   @override
@@ -419,7 +423,7 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
       // 先尝试从缓存获取搜索结果
       final cachedResults = await StorageService.instance.getCachedSearchResults(query);
       if (cachedResults != null && cachedResults.isNotEmpty) {
-        widget.search(cachedResults);
+        widget.onSearchResults?.call(cachedResults);
         _searchResultsController.forward();
         _contentController.reverse();
         if (mounted) {
@@ -429,7 +433,8 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
       }
       
       // 执行网络搜索
-      widget.search(query);
+      final results = await widget.search(query);
+      widget.onSearchResults?.call(results);
       
       // 动画显示搜索结果
       _searchResultsController.forward();
@@ -440,7 +445,7 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
       try {
         final offlineResults = await StorageService.instance.searchOffline(_searchController.text.trim());
         if (offlineResults.isNotEmpty) {
-          widget.search(offlineResults);
+          widget.onSearchResults?.call(offlineResults);
           _searchResultsController.forward();
           _contentController.reverse();
         }
@@ -456,7 +461,6 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
 
   void clear() {
     _searchController.clear();
-    widget.clearSearch();
     _searchResultsController.reverse().then((_) {
       if (mounted) {
         widget.clearSearch();
@@ -484,6 +488,10 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
                   hintText: '搜索...',
                   hintStyle: TextStyle(
                     color: Colors.grey[600],
+                  ),
+                  prefixIcon: IconButton(
+                    icon: const Icon(Icons.person_outline),
+                    onPressed: widget.onOpenProfile,
                   ),
                   contentPadding: const EdgeInsets.fromLTRB(16.0, 12.0, 12.0, 12.0),
                   suffixIcon: widget.searchToyList.isNotEmpty

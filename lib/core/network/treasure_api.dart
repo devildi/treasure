@@ -15,7 +15,7 @@ class TreasureApi {
     String? baseUrl,
   }) {
     final url = baseUrl ??
-        (isDevelopMode ? 'http://172.20.10.13:4000/' : 'https://nextsticker.cn/');
+        (isDevelopMode ? 'http://10.96.162.50:4000/' : 'https://nextsticker.cn/');
 
     debugPrint('🔧 TreasureApi.initialize: 配置API客户端');
     debugPrint('🔧 TreasureApi.initialize: baseUrl = $url');
@@ -35,7 +35,7 @@ class TreasureApi {
   Future<ApiResponse<OwnerModel>> register(Map<String, dynamic> data) async {
     try {
       final response = await _apiClient.post<dynamic>(
-        'api/treasure/register',
+        'api/users/',
         data: data,
       );
       
@@ -75,7 +75,7 @@ class TreasureApi {
   Future<ApiResponse<OwnerModel>> login(Map<String, dynamic> data) async {
     try {
       final response = await _apiClient.post<dynamic>(
-        'api/treasure/login',
+        'api/users/login',
         data: data,
       );
       
@@ -253,7 +253,7 @@ class TreasureApi {
       debugPrint('🗑️ TreasureApi.deleteToy: 调用 _apiClient.post...');
       final response = await _apiClient.post<dynamic>(
         'api/treasure/delete',
-        data: {'id': id, 'key': key},
+        data: {'_id': id, 'key': key},
         fromJson: (data) => ResultModel.fromJson(data as Map<String, dynamic>),
       );
 

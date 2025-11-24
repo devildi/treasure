@@ -110,10 +110,9 @@ class MainPage extends StatefulWidget {
 }
 
 class MainPageState extends State<MainPage> {
-  int _currentIndex = 0;
   final PageController _pageController = PageController();
-  List toyList = [];
-  List searchToyList = [];
+  List<ToyModel> toyList = [];
+  List<ToyModel> searchToyList = [];
   int toyCount = 0;
   double totalValue = 0.0;
   @override
@@ -180,6 +179,24 @@ class MainPageState extends State<MainPage> {
     super.dispose();
   }
 
+  void _openHome() {
+    InteractiveFeedback.hapticFeedback();
+    _pageController.animateToPage(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _openProfile() {
+    InteractiveFeedback.hapticFeedback();
+    _pageController.animateToPage(
+      1,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   void jump(user) async {
     debugPrint('🚀 Main.jump: 打开编辑页面...');
     await AppNavigator.push(
@@ -202,19 +219,19 @@ class MainPageState extends State<MainPage> {
     debugPrint('✅ Main.jump: 刷新完成');
   }
 
-  void search(String keyword) async {
+  Future<List<ToyModel>> search(String keyword) async {
     final currentUser = StateManager.readUserState(context).currentUser;
     AllToysModel toies = await TreasureDao.searchToies(keyword, currentUser.uid);
     if (toies.toyList.isEmpty) {
-      if (!mounted) return;
+      if (!mounted) return [];
       CommonUtils.show(context, '没有找到相关宝藏');
       StateManager.readUIState(context).setComponentLoading('search', false);
-      return;
+      return [];
     }
     setState(() {
       searchToyList = toies.toyList;
-      StateManager.readUIState(context).setComponentLoading('search', false);
     });
+    return searchToyList;
   }
 
   void clearSearch() {
@@ -228,7 +245,11 @@ class MainPageState extends State<MainPage> {
       final currentUser = StateManager.readUserState(context).currentUser;
       AllToysModel toies = await TreasureDao.getAllToies(index, currentUser.uid);
       setState(() {
-        toyList = toies.toyList;
+        if (index <= 1) {
+          toyList = toies.toyList;
+        } else {
+          toyList = [...toyList, ...toies.toyList];
+        }
         StateManager.readUIState(context).setNetworkStatus(true);
       });
     } catch (err) {
@@ -264,18 +285,19 @@ class MainPageState extends State<MainPage> {
                     Expanded(
                       child: PageView(
                         controller: _pageController,
-                        onPageChanged: (index) {
-                          setState(() {
-                            _currentIndex = index;
-                          });
-                        },
                         children: [
                           HomePage(
                             key: homePageKey,
                             searchToyList: searchToyList,
                             search: search,
                             clearSearch: clearSearch,
+                            onSearchResults: (results) {
+                              setState(() {
+                                searchToyList = results;
+                              });
+                            },
                             onDataChanged: initData, // 传递数据变化回调
+                            onOpenProfile: _openProfile,
                           ),
                           ProfilePage(
                             user: currentUser,
@@ -283,59 +305,36 @@ class MainPageState extends State<MainPage> {
                             toyCount: toyCount,
                             toies: toyList,
                             getMore: _addMoreData,
+                            onBack: _openHome,
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                floatingActionButton: Transform.translate(
-                  offset: const Offset(0, 10),
-                  child: AnimatedButton(
-                    onPressed: () {
-                      InteractiveFeedback.hapticFeedback(type: HapticFeedbackType.medium);
-                      jump(currentUser);
-                    },
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.add, size: 40, color: Colors.white),
-                    ),
-                  ),
-                ),
-                floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-                bottomNavigationBar: SafeArea(
+                floatingActionButton: AnimatedButton(
+                  onPressed: () {
+                    InteractiveFeedback.hapticFeedback(type: HapticFeedbackType.medium);
+                    jump(currentUser);
+                  },
                   child: Container(
+                    width: 56,
+                    height: 56,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border(
-                        top: BorderSide(
-                          color: Colors.grey.withOpacity(0.2),
-                          width: 1.0,
+                      color: Colors.black,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
-                    ),
-                    height: 72, // 增加高度来容纳内容
-                    child: Row(
-                      children: [
-                        Expanded(child: _buildNavItem(0, Icons.home, '首页')),
-                        Expanded(child: Container()),
-                        Expanded(child: _buildNavItem(1, Icons.person, '我的')),
                       ],
                     ),
+                    child: const Icon(Icons.add, size: 40, color: Colors.white),
                   ),
                 ),
+                floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
               ),
             );
           },
@@ -348,102 +347,19 @@ class MainPageState extends State<MainPage> {
     return Scaffold(
       body: PageView(
         controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
         children: const [
           HomePageSkeleton(),
           ProfilePageSkeleton(),
         ],
       ),
-      floatingActionButton: Transform.translate(
-        offset: const Offset(0, 10),
-        child: FloatingActionButton(
-          onPressed: null,
-          backgroundColor: Colors.grey[300],
-          elevation: 0,
-          child: Icon(Icons.add, size: 40, color: Colors.grey[500]),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: null,
+        backgroundColor: Colors.grey[300],
+        elevation: 0,
+        child: Icon(Icons.add, size: 40, color: Colors.grey[500]),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(
-              top: BorderSide(
-                color: Colors.grey.withOpacity(0.2),
-                width: 1.0,
-              ),
-            ),
-          ),
-          height: 72,
-          child: Row(
-            children: [
-              Expanded(child: _buildNavItem(0, Icons.home, '首页')),
-              Expanded(child: Container()),
-              Expanded(child: _buildNavItem(1, Icons.person, '我的')),
-            ],
-          ),
-        ),
-      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = _currentIndex == index;
-    return RippleButton(
-      onPressed: () {
-        if (!isSelected) {
-          InteractiveFeedback.hapticFeedback();
-          setState(() {
-            _currentIndex = index;
-            _pageController.animateToPage(
-              index,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-            );
-          });
-        }
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              child: Icon(
-                icon,
-                color: isSelected ? Colors.black : Colors.grey[600],
-                size: isSelected ? 24 : 22,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Flexible(
-              child: AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                style: TextStyle(
-                  color: isSelected ? Colors.black : Colors.grey[600],
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
