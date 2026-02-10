@@ -15,7 +15,7 @@ class TreasureApi {
     String? baseUrl,
   }) {
     final url = baseUrl ??
-        (isDevelopMode ? 'http://10.96.162.50:4000/' : 'https://nextsticker.cn/');
+        (isDevelopMode ? 'http://10.40.204.50:4000/' : 'https://nextsticker.cn/');
 
     debugPrint('🔧 TreasureApi.initialize: 配置API客户端');
     debugPrint('🔧 TreasureApi.initialize: baseUrl = $url');

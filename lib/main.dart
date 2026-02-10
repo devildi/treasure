@@ -284,6 +284,7 @@ class MainPageState extends State<MainPage> {
                     const NetworkStatusBanner(),
                     Expanded(
                       child: PageView(
+                        physics: const NeverScrollableScrollPhysics(), // 禁用滑动切换
                         controller: _pageController,
                         children: [
                           HomePage(

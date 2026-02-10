@@ -257,8 +257,8 @@ class AllToysModel {
 }
 
 class ReturnBody {
-  final String width;
-  final String height;
+  final double width;
+  final double height;
   final String key;
 
   ReturnBody({
@@ -269,10 +269,26 @@ class ReturnBody {
 
   factory ReturnBody.fromJson(Map<String, dynamic> json) {
     return ReturnBody(
-      width: json["width"],
-      height: json["height"],
-      key: json["key"]
+      width: _safeToDouble(json["width"]),
+      height: _safeToDouble(json["height"]),
+      key: json["key"] ?? ''
     );
+  }
+
+  // 安全的数字转换方法
+  static double _safeToDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        debugPrint('⚠️ ReturnBody: 无法解析数字字符串: $value');
+        return 0.0;
+      }
+    }
+    return 0.0;
   }
 
   Map<String, dynamic> toJson() {

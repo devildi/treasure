@@ -143,8 +143,9 @@ class _OptimizedImageState extends State<OptimizedImage>
         );
       },
       errorBuilder: (context, error, stackTrace) {
-        debugPrint('本地图片显示错误 [${widget.itemName}]: $error');
-        return _buildError();
+        debugPrint('⚠️ 本地图片加载失败 [${widget.itemName}]，尝试网络加载: $error');
+        // 本地加载失败时，降级尝试网络加载
+        return _buildNetworkImage();
       },
     );
   }

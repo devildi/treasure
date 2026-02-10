@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:treasure/tools.dart';
@@ -7,6 +8,7 @@ import 'package:qiniu_flutter_sdk/qiniu_flutter_sdk.dart';
 import 'package:treasure/toy_model.dart';
 import 'package:treasure/dao.dart';
 import 'package:treasure/pages/toy.dart';
+import 'package:treasure/pages/batch_upload_page.dart';
 
 class EditMicro extends StatefulWidget {
   final OwnerModel user;
@@ -49,7 +51,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
   final TextEditingController _controller1 = TextEditingController();
   final TextEditingController _controller2 = TextEditingController();
   final TextEditingController _controller3 = TextEditingController();
-  final List<String> chipLabels = [
+  List<String> chipLabels = [
     '泡泡玛特', '盲盒', '手办', 
     '三丽鸥', 'JellyCat', '乐高',
     '游戏机', '游戏', '周边', '迪士尼', '环球影城', '其他'
@@ -60,8 +62,10 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
   num price = 0;
   String description = '';
   bool uploading = false;
+  bool isProcessingImages = false; // 新增：专门用于图片处理（压缩）的loading状态
   double progress = 0.0;
   int _selectedChipIndex = -1;
+  bool isBatchMode = true;
 
   @override
   void dispose() {
@@ -221,7 +225,32 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
       }
 
       ReturnBody body = ReturnBody.fromJson(response.rawData);
-      debugPrint('解析后的数据: key=${body.key}, width=${body.width}, height=${body.height}');
+      debugPrint('解析后的数据(服务端): key=${body.key}, width=${body.width}, height=${body.height}');
+
+      // 强行使用本地计算的宽高覆盖服务端的返回
+      if (!flag) {
+        try {
+          File imageFile = File(path);
+          var bytes = await imageFile.readAsBytes();
+          var codec = await ui.instantiateImageCodec(bytes);
+          var frameInfo = await codec.getNextFrame();
+          
+          double localWidth = frameInfo.image.width.toDouble();
+          double localHeight = frameInfo.image.height.toDouble();
+          
+          debugPrint('📏 本地计算纠正: ${localWidth}x$localHeight');
+          
+          body = ReturnBody(
+            key: body.key,
+            width: localWidth,
+            height: localHeight
+          );
+        } catch (e) {
+          debugPrint('⚠️ 本地计算宽高失败: $e');
+          // 失败则保留服务端数据
+        }
+      }
+
       debugPrint('=== 上传完成 ===');
 
       return body;
@@ -255,6 +284,9 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
             break;
           case StorageErrorType.IN_PROGRESS:
             debugPrint('❌ 错误: 任务已在进行中');
+            break;
+          case StorageErrorType.NO_AVAILABLE_REGION:
+            debugPrint('❌ 错误: 无可用区域');
             break;
         }
       } else {
@@ -296,31 +328,70 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
       if (source == null) return; // 用户取消了选择
 
       List<XFile>? pickedFiles;
-      
-      if (source == ImageSource.gallery) {
-        // 从相册选择多张照片
-        pickedFiles = await picker.pickMultiImage(
-          maxWidth: 1000,
-          maxHeight: 1000,
-          imageQuality: 80,
-        );
+
+      if (source == ImageSource.gallery && isBatchMode) {
+        // 批量模式且从相册选择
+        setState(() {
+          isProcessingImages = true;
+        });
+        
+        try {
+          pickedFiles = await picker.pickMultiImage(
+            maxWidth: 1000,
+            maxHeight: 1000,
+            imageQuality: 80,
+          );
+        } finally {
+          setState(() {
+            isProcessingImages = false;
+          });
+        }
       } else {
-        // 拍照
-        final XFile? photo = await picker.pickImage(
-          source: source,
-          maxWidth: 1000,
-          maxHeight: 1000,
-          imageQuality: 80,
-        );
-        if (photo != null) {
-          pickedFiles = [photo];
+        // 单张模式或拍照
+        setState(() {
+          isProcessingImages = true;
+        });
+
+        try {
+          final XFile? photo = await picker.pickImage(
+            source: source,
+            maxWidth: 1000,
+            maxHeight: 1000,
+            imageQuality: 80,
+          );
+           if (photo != null) {
+            pickedFiles = [photo];
+          }
+        } finally {
+           setState(() {
+            isProcessingImages = false;
+          });
         }
       }
 
       if (pickedFiles != null && pickedFiles.isNotEmpty) {
-        setState(() {
-          medias = pickedFiles!.map((file) => File(file.path)).toList();
-        });
+        if (isBatchMode) {
+          final images = pickedFiles.map((file) => File(file.path)).toList();
+          if (mounted) {
+             Navigator.push(
+               context,
+               MaterialPageRoute(
+                 builder: (context) => BatchUploadPage(
+                   images: images,
+                   toyName: toyName,
+                   price: price,
+                   description: description,
+                   label: _selectedChipIndex != -1 ? chipLabels[_selectedChipIndex] : '',
+                   uid: widget.user.uid,
+                 ),
+               ),
+             );
+          }
+        } else {
+          setState(() {
+            medias = pickedFiles!.map((file) => File(file.path)).toList();
+          });
+        }
       }
     } catch (e) {
       if (!context.mounted) return;
@@ -552,6 +623,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
                 TextField(
                   onChanged: _priceChanged,
                   controller: _controller2,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration:const InputDecoration(
                     hintText: '购入价格：',
                     border:InputBorder.none
@@ -573,10 +645,55 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
                     return ChoiceChip(
                       label: Text(chipLabels[index]),
                       selected: _selectedChipIndex == index,
-                      onSelected: (bool selected) {
-                        setState(() {
-                          _selectedChipIndex = selected ? index : -1;
-                        });
+                      onSelected: (bool selected) async {
+                        if (chipLabels[index] == '其他' && selected) {
+                          // 显示输入对话框
+                          final String? newLabel = await showDialog<String>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              String inputValue = '';
+                              return AlertDialog(
+                                title: const Text('添加新标签'),
+                                content: TextField(
+                                  autofocus: true,
+                                  decoration: const InputDecoration(
+                                    hintText: '请输入标签名称',
+                                  ),
+                                  onChanged: (value) {
+                                    inputValue = value;
+                                  },
+                                ),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: const Text('取消'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                  TextButton(
+                                    child: const Text('确定'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop(inputValue);
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                          if (newLabel != null && newLabel.isNotEmpty) {
+                            setState(() {
+                              // 将新标签插入到"其他"之前
+                              chipLabels.insert(chipLabels.length - 1, newLabel);
+                              // 选中新插入的标签
+                              _selectedChipIndex = chipLabels.length - 2;
+                            });
+                          }
+                        } else {
+                          setState(() {
+                            _selectedChipIndex = selected ? index : -1;
+                          });
+                        }
                       },
                       selectedColor: Colors.blue[200],
                       backgroundColor: Colors.grey[200],
@@ -589,7 +706,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
               ]),
             ),
           ),
-          uploading == true
+          (uploading == true || isProcessingImages == true)
           ?const Center(
             child: CircularProgressIndicator(),
           )

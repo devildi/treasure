@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'api_response.dart';
 import 'network_exceptions.dart';
 import 'retry_interceptor.dart';
-// import 'cache_interceptor.dart';
+import 'cache_interceptor.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -25,9 +25,9 @@ class ApiClient {
     _dio?.close(); // Close existing instance if any
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: connectTimeout,
-      receiveTimeout: receiveTimeout,
-      sendTimeout: sendTimeout,
+      connectTimeout: Duration(milliseconds: connectTimeout),
+      receiveTimeout: Duration(milliseconds: receiveTimeout),
+      sendTimeout: Duration(milliseconds: sendTimeout),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -42,12 +42,12 @@ class ApiClient {
   void _setupInterceptors() {
     if (_dio == null) return;
 
-    // 临时禁用CacheInterceptor
-    debugPrint('⚠️ ApiClient: 临时禁用CacheInterceptor');
-    // _dio!.interceptors.add(CacheInterceptor(
-    //   cacheDuration: const Duration(minutes: 10), // 延长缓存时间
-    //   cacheableMethods: const ['GET'], // 只缓存GET请求
-    // ));
+    // 启用CacheInterceptor (Optimized with Hive & Memory Cache)
+    debugPrint('🚀 ApiClient: 启用优化后的CacheInterceptor');
+    _dio!.interceptors.add(CacheInterceptor(
+      defaultCacheDuration: const Duration(minutes: 10), // 默认缓存时间
+      cacheableMethods: const ['GET'], // 只缓存GET请求
+    ));
 
     // Add retry interceptor
     _dio!.interceptors.add(RetryInterceptor(
@@ -108,8 +108,8 @@ class ApiClient {
       );
       debugPrint('✅ ApiClient.get: _dio.get响应完成 (statusCode=${response.statusCode})');
       return _handleResponse<T>(response, fromJson);
-    } on DioError catch (e) {
-      debugPrint('❌ ApiClient.get: DioError - ${e.type} - ${e.message}');
+    } on DioException catch (e) {
+      debugPrint('❌ ApiClient.get: DioException - ${e.type} - ${e.message}');
       throw _handleDioError(e);
     } catch (e) {
       debugPrint('❌ ApiClient.get: 未知错误 - $e (${e.runtimeType})');
@@ -132,7 +132,7 @@ class ApiClient {
         options: options,
       );
       return _handleResponse<T>(response, fromJson);
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       throw _handleDioError(e);
     } catch (e) {
       throw UnknownNetworkException(message: e.toString());
@@ -154,7 +154,7 @@ class ApiClient {
         options: options,
       );
       return _handleResponse<T>(response, fromJson);
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       throw _handleDioError(e);
     } catch (e) {
       throw UnknownNetworkException(message: e.toString());
@@ -176,7 +176,7 @@ class ApiClient {
         options: options,
       );
       return _handleResponse<T>(response, fromJson);
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       throw _handleDioError(e);
     } catch (e) {
       throw UnknownNetworkException(message: e.toString());
@@ -205,26 +205,28 @@ class ApiClient {
     }
   }
 
-  NetworkException _handleDioError(DioError error) {
+  NetworkException _handleDioError(DioException error) {
     switch (error.type) {
-      case DioErrorType.connectTimeout:
+      case DioExceptionType.connectionTimeout:
         return ConnectionTimeoutException();
-      case DioErrorType.sendTimeout:
+      case DioExceptionType.sendTimeout:
         return SendTimeoutException();
-      case DioErrorType.receiveTimeout:
+      case DioExceptionType.receiveTimeout:
         return ReceiveTimeoutException();
-      case DioErrorType.response:
+      case DioExceptionType.badResponse:
         return ServerException(
           statusCode: error.response?.statusCode,
           message: error.response?.data?.toString() ?? 'Server error',
         );
-      case DioErrorType.cancel:
+      case DioExceptionType.cancel:
         return RequestCancelledException();
-      case DioErrorType.other:
+      case DioExceptionType.unknown:
         if (error.error is SocketException) {
           return NoInternetException();
         }
-        return UnknownNetworkException(message: error.message);
+        return UnknownNetworkException(message: error.message ?? 'Unknown error');
+      default:
+        return UnknownNetworkException(message: error.message ?? 'Unknown error');
     }
   }
 

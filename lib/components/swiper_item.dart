@@ -119,6 +119,8 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
         return ['设置购买价格', '请输入价格'];
       case 'description':
         return ['设置宝贝的详情', '请输入宝贝描述'];
+      case 'labels':
+        return ['设置标签', '请输入标签名称'];
       default:
         return [''];
     }
@@ -142,7 +144,7 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
             ),
             TextButton(
               onPressed: () {
-                final price = (tag == 'toyName' || tag == 'description') ? controller.text : int.tryParse(controller.text);
+                final price = (tag == 'toyName' || tag == 'description' || tag == 'labels') ? controller.text : int.tryParse(controller.text);
                 Navigator.pop(context, price);
               },
               child: const Text('确定'),
@@ -242,6 +244,24 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
         wasUpdated = true;
         debugPrint('📄 描述更新: ${currentToy.description}');
       }
+    } else if(tag == 'labels'){
+      if (newPrice != null && newPrice.isNotEmpty) {
+        currentToy.labels = newPrice;
+
+        // 同时更新原始列表中对应的数据
+        if (widget.toyList != null && widget.toyIndex != null && widget.toyIndex! < widget.toyList!.length) {
+          widget.toyList![widget.toyIndex!].labels = newPrice;
+          debugPrint('🏷️ 同时更新列表中索引${widget.toyIndex}的数据: labels=$newPrice');
+        }
+
+        if (mounted) {
+          setState(() {
+            // 触发重建
+          });
+        }
+        wasUpdated = true;
+        debugPrint('🏷️ 标签更新: ${currentToy.labels}');
+      }
     }
 
     // 如果数据被更新，记录更新信息（列表不可直接修改，依赖保存后的刷新机制）
@@ -336,8 +356,8 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
           imageUrl,
           options: Options(
             responseType: ResponseType.bytes,
-            receiveTimeout: 30000,
-            sendTimeout: 10000,
+            receiveTimeout: const Duration(milliseconds: 30000),
+            sendTimeout: const Duration(milliseconds: 10000),
           ),
         );
 
@@ -455,15 +475,18 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
                     )
                   ) ,
                   const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blue,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '${currentToy.labels}',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                  GestureDetector(
+                    onTap: () => setPrice(context, currentToy, setState, 'labels'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${currentToy.labels}',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
                     ),
                   ),
                 ],

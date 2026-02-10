@@ -16,8 +16,8 @@ class ImageCacheManager {
   final Map<String, Future<String?>> _downloadingImages = {};
   
   final Dio _dio = Dio(BaseOptions(
-    connectTimeout: 10000, // 10 seconds
-    receiveTimeout: 15000, // 15 seconds
+    connectTimeout: const Duration(milliseconds: 10000), // 10 seconds
+    receiveTimeout: const Duration(milliseconds: 15000), // 15 seconds
     headers: {
       'User-Agent': 'TreasureApp/1.0',
     },

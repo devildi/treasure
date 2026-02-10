@@ -13,7 +13,7 @@ class RetryInterceptor extends Interceptor {
   });
 
   @override
-  void onError(DioError err, ErrorInterceptorHandler handler) async {
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
     final extra = err.requestOptions.extra;
     final retries = extra['retries'] ?? 0;
 
@@ -31,7 +31,7 @@ class RetryInterceptor extends Interceptor {
         handler.resolve(response);
         return;
       } catch (e) {
-        if (e is DioError) {
+        if (e is DioException) {
           super.onError(e, handler);
         } else {
           handler.reject(err);
@@ -43,10 +43,10 @@ class RetryInterceptor extends Interceptor {
     super.onError(err, handler);
   }
 
-  bool _shouldRetry(DioError error) {
-    return error.type == DioErrorType.connectTimeout ||
-           error.type == DioErrorType.sendTimeout ||
-           error.type == DioErrorType.receiveTimeout ||
+  bool _shouldRetry(DioException error) {
+    return error.type == DioExceptionType.connectionTimeout ||
+           error.type == DioExceptionType.sendTimeout ||
+           error.type == DioExceptionType.receiveTimeout ||
            (error.response != null && 
             retryStatusCodes.contains(error.response!.statusCode));
   }
