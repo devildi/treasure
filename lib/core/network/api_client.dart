@@ -73,11 +73,13 @@ class ApiClient {
         handler.next(options);
       },
       onResponse: (response, handler) {
-        debugPrint('✅ Response: ${response.statusCode} ${response.requestOptions.path}');
+        debugPrint(
+            '✅ Response: ${response.statusCode} ${response.requestOptions.path}');
         handler.next(response);
       },
       onError: (error, handler) {
-        debugPrint('❌ Error: ${error.response?.statusCode} ${error.requestOptions.path}');
+        debugPrint(
+            '❌ Error: ${error.response?.statusCode} ${error.requestOptions.path}');
         handler.next(error);
       },
     ));
@@ -106,7 +108,8 @@ class ApiClient {
         queryParameters: queryParameters,
         options: options,
       );
-      debugPrint('✅ ApiClient.get: _dio.get响应完成 (statusCode=${response.statusCode})');
+      debugPrint(
+          '✅ ApiClient.get: _dio.get响应完成 (statusCode=${response.statusCode})');
       return _handleResponse<T>(response, fromJson);
     } on DioException catch (e) {
       debugPrint('❌ ApiClient.get: DioException - ${e.type} - ${e.message}');
@@ -183,15 +186,18 @@ class ApiClient {
     }
   }
 
-  ApiResponse<T> _handleResponse<T>(Response response, T Function(dynamic)? fromJson) {
-    if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+  ApiResponse<T> _handleResponse<T>(
+      Response response, T Function(dynamic)? fromJson) {
+    if (response.statusCode != null &&
+        response.statusCode! >= 200 &&
+        response.statusCode! < 300) {
       T? data;
       if (fromJson != null && response.data != null) {
         data = fromJson(response.data);
       } else {
         data = response.data as T?;
       }
-      
+
       return ApiResponse.success(
         data: data,
         statusCode: response.statusCode!,
@@ -224,9 +230,11 @@ class ApiClient {
         if (error.error is SocketException) {
           return NoInternetException();
         }
-        return UnknownNetworkException(message: error.message ?? 'Unknown error');
+        return UnknownNetworkException(
+            message: error.message ?? 'Unknown error');
       default:
-        return UnknownNetworkException(message: error.message ?? 'Unknown error');
+        return UnknownNetworkException(
+            message: error.message ?? 'Unknown error');
     }
   }
 

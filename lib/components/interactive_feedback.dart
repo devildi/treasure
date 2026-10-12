@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class InteractiveFeedback {
-  static void hapticFeedback({HapticFeedbackType type = HapticFeedbackType.selection}) {
+  static void hapticFeedback(
+      {HapticFeedbackType type = HapticFeedbackType.selection}) {
     switch (type) {
       case HapticFeedbackType.selection:
         HapticFeedback.selectionClick();
@@ -71,10 +72,10 @@ class InteractiveFeedback {
     required Color backgroundColor,
   }) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    
+
     final overlay = Overlay.of(context);
     late OverlayEntry overlayEntry;
-    
+
     overlayEntry = OverlayEntry(
       builder: (context) => AnimatedToast(
         message: message,
@@ -84,7 +85,7 @@ class InteractiveFeedback {
         onDismiss: () => overlayEntry.remove(),
       ),
     );
-    
+
     overlay.insert(overlayEntry);
   }
 }
@@ -126,17 +127,17 @@ class _AnimatedToastState extends State<AnimatedToast>
   @override
   void initState() {
     super.initState();
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -1),
       end: Offset.zero,
@@ -144,7 +145,7 @@ class _AnimatedToastState extends State<AnimatedToast>
       parent: _slideController,
       curve: Curves.elasticOut,
     ));
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -152,10 +153,10 @@ class _AnimatedToastState extends State<AnimatedToast>
       parent: _fadeController,
       curve: Curves.easeIn,
     ));
-    
+
     _slideController.forward();
     _fadeController.forward();
-    
+
     // Auto dismiss after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
@@ -333,8 +334,10 @@ class RippleButton extends StatelessWidget {
           }
           onPressed?.call();
         },
-        splashColor: rippleColor ?? Theme.of(context).primaryColor.withOpacity(0.2),
-        highlightColor: rippleColor?.withOpacity(0.1) ?? Theme.of(context).primaryColor.withOpacity(0.1),
+        splashColor:
+            rippleColor ?? Theme.of(context).primaryColor.withOpacity(0.2),
+        highlightColor: rippleColor?.withOpacity(0.1) ??
+            Theme.of(context).primaryColor.withOpacity(0.1),
         borderRadius: borderRadius ?? BorderRadius.circular(8),
         child: child,
       ),

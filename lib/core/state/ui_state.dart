@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:treasure/core/state/app_state.dart';
 
 /// UI状态数据模型
@@ -43,15 +44,17 @@ class UIStateData {
         other.currentPageIndex == currentPageIndex &&
         other.previousPageIndex == previousPageIndex &&
         other.isNetworkAvailable == isNetworkAvailable &&
-        other.isOfflineMode == isOfflineMode;
+        other.isOfflineMode == isOfflineMode &&
+        mapEquals(other.loadingStates, loadingStates) &&
+        listEquals(other.navigationHistory, navigationHistory);
   }
 
   @override
   int get hashCode {
     return currentPageIndex.hashCode ^
-           previousPageIndex.hashCode ^
-           isNetworkAvailable.hashCode ^
-           isOfflineMode.hashCode;
+        previousPageIndex.hashCode ^
+        isNetworkAvailable.hashCode ^
+        isOfflineMode.hashCode;
   }
 
   @override
@@ -64,7 +67,8 @@ class UIStateData {
 class UIState extends AppState<UIStateData> {
   static const int maxNavigationHistorySize = 20;
 
-  UIState({UIStateData? initialState}) : super(initialState ?? const UIStateData());
+  UIState({UIStateData? initialState})
+      : super(initialState ?? const UIStateData());
 
   /// 当前页面索引
   int get currentPage => state.currentPageIndex;
@@ -79,7 +83,8 @@ class UIState extends AppState<UIStateData> {
   bool get isOfflineMode => state.isOfflineMode;
 
   /// 导航历史
-  List<String> get navigationHistory => List.unmodifiable(state.navigationHistory);
+  List<String> get navigationHistory =>
+      List.unmodifiable(state.navigationHistory);
 
   /// 切换页面
   void setCurrentPage(int pageIndex) {
@@ -120,13 +125,13 @@ class UIState extends AppState<UIStateData> {
   /// 设置特定组件的加载状态
   void setComponentLoading(String componentId, bool isLoading) {
     final newLoadingStates = Map<String, bool>.from(state.loadingStates);
-    
+
     if (isLoading) {
       newLoadingStates[componentId] = true;
     } else {
       newLoadingStates.remove(componentId);
     }
-    
+
     updateState(state.copyWith(loadingStates: newLoadingStates));
   }
 
@@ -152,12 +157,12 @@ class UIState extends AppState<UIStateData> {
   void addToNavigationHistory(String routeName) {
     final newHistory = List<String>.from(state.navigationHistory);
     newHistory.add(routeName);
-    
+
     // 限制历史记录大小
     if (newHistory.length > maxNavigationHistorySize) {
       newHistory.removeAt(0);
     }
-    
+
     updateState(state.copyWith(navigationHistory: newHistory));
   }
 
@@ -172,7 +177,7 @@ class UIState extends AppState<UIStateData> {
   void batchUIUpdate(void Function(UIStateBatchUpdater updater) updates) {
     final updater = UIStateBatchUpdater._(state);
     updates(updater);
-    
+
     if (updater._hasChanges) {
       updateState(updater._newState);
     }
@@ -230,13 +235,13 @@ class UIStateBatchUpdater {
   /// 设置组件加载状态
   void setComponentLoading(String componentId, bool isLoading) {
     final newLoadingStates = Map<String, bool>.from(_newState.loadingStates);
-    
+
     if (isLoading) {
       newLoadingStates[componentId] = true;
     } else {
       newLoadingStates.remove(componentId);
     }
-    
+
     _newState = _newState.copyWith(loadingStates: newLoadingStates);
     _hasChanges = true;
   }
@@ -245,11 +250,11 @@ class UIStateBatchUpdater {
   void addNavigationHistory(String routeName) {
     final newHistory = List<String>.from(_newState.navigationHistory);
     newHistory.add(routeName);
-    
+
     if (newHistory.length > UIState.maxNavigationHistorySize) {
       newHistory.removeAt(0);
     }
-    
+
     _newState = _newState.copyWith(navigationHistory: newHistory);
     _hasChanges = true;
   }

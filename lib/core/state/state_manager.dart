@@ -15,7 +15,9 @@ class StateManagerFactory {
     UserStateData? initialState,
     StatePersistence? persistence,
   }) {
-    _userState?.dispose();
+    if (_userState != null && !_userState!.isDisposed) {
+      _userState!.dispose();
+    }
     _userState = UserState(
       initialState: initialState,
       persistence: persistence,
@@ -25,7 +27,9 @@ class StateManagerFactory {
 
   /// 创建UI状态管理器
   static UIState createUIState({UIStateData? initialState}) {
-    _uiState?.dispose();
+    if (_uiState != null && !_uiState!.isDisposed) {
+      _uiState!.dispose();
+    }
     _uiState = UIState(initialState: initialState);
     return _uiState!;
   }
@@ -38,8 +42,12 @@ class StateManagerFactory {
 
   /// 销毁所有状态管理器
   static void dispose() {
-    _userState?.dispose();
-    _uiState?.dispose();
+    if (_userState != null && !_userState!.isDisposed) {
+      _userState!.dispose();
+    }
+    if (_uiState != null && !_uiState!.isDisposed) {
+      _uiState!.dispose();
+    }
     _userState = null;
     _uiState = null;
   }
@@ -277,7 +285,8 @@ class StateDebugger {
 
       // 检查UI状态一致性
       if (uiSt.isOfflineMode && uiSt.isNetworkAvailable) {
-        debugPrint('⚠️ State Inconsistency: Offline mode enabled but network is available');
+        debugPrint(
+            '⚠️ State Inconsistency: Offline mode enabled but network is available');
         return false;
       }
 

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:treasure/tools.dart';
 import 'package:treasure/components/common_image.dart';
 import 'package:treasure/dao.dart';
 import 'package:treasure/toy_model.dart';
 import 'package:treasure/core/pagination/pagination_controller.dart';
 import 'package:treasure/components/optimized_masonry_grid.dart';
-import 'package:treasure/core/image/image_cache_manager.dart';
+// import 'package:treasure/core/image/image_cache_manager.dart';
 import 'package:treasure/core/state/state_manager.dart';
-import 'package:treasure/core/storage/storage_service.dart';
+// import 'package:treasure/core/storage/storage_service.dart';
 import 'package:treasure/core/performance/performance_manager.dart';
-import 'package:treasure/core/network/cache_interceptor.dart';
+// import 'package:treasure/core/network/cache_interceptor.dart';
+import 'package:treasure/pages/search_results_page.dart';
 
 class HomePage extends StatefulWidget {
   final List<ToyModel> searchToyList;
@@ -21,7 +23,7 @@ class HomePage extends StatefulWidget {
 
   const HomePage({
     Key? key,
-    required this.searchToyList,
+    this.searchToyList = const [],
     required this.search,
     required this.clearSearch,
     this.onSearchResults,
@@ -65,19 +67,14 @@ class HomePageHelper {
   }
 }
 
-class HomePageState extends State<HomePage> with TickerProviderStateMixin, WidgetsBindingObserver {
+class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _controller = ScrollController();
   late PaginationController<ToyModel> _paginationController;
   bool showBtn = false;
   bool uploading = false;
-  final ImageCacheManager _imageCacheManager = ImageCacheManager();
-  //动画
-  late AnimationController _searchResultsController;
-  late Animation<double> _searchResultsAnimation;
-  late AnimationController _contentController;
-  //late Animation<double> _contentAnimation;
-
+  // 【单机模式】已注释未使用的图片缓存管理器
+  // final ImageCacheManager _imageCacheManager = ImageCacheManager();
   // 防止重复加载的标记
   bool _isInitialLoading = false;
   bool _hasExternalRefresh = false;
@@ -94,26 +91,6 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
       loadData: _loadToysData,
       pageSize: 20,
     );
-    
-    // Animation controller for search results
-    _searchResultsController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    
-    _searchResultsAnimation = CurvedAnimation(
-      parent: _searchResultsController,
-      curve: Curves.easeInOut,
-    );
-    
-    // Animation controller for main content
-    _contentController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    
-    // Start with content visible
-    _contentController.forward();
 
     // 延迟加载初始数据，给外部刷新足够时间
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -141,81 +118,43 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
       () async {
         try {
           final uid = StateManager.readUserState(context).currentUser.uid;
-      
-      // 先尝试从缓存加载
-      final cacheKey = 'toys_page_${page}_uid_$uid';
-      final cachedData = await StorageService.instance.getCachedApiResponse(cacheKey);
-      
-      if (cachedData != null) {
-        final toyList = (cachedData['toyList'] as List?)
-            ?.map((json) => ToyModel.fromJson(json))
-            .toList() ?? [];
-        
-        if (toyList.isNotEmpty) {
-          // 异步预加载缓存的图片
-          final imagesToPreload = toyList
-              .map((toy) => {
-                    'url': toy.toyPicUrl,
-                    'name': toy.toyName,
-                  })
-              .toList();
-          _imageCacheManager.preloadImages(imagesToPreload);
-          
-          return toyList;
-        }
-      }
-      
-      // 缓存未命中，从网络加载
-      final response = await TreasureDao.getAllToies(page, uid);
-      
-      // 缓存API响应
-      await StorageService.instance.cacheApiResponse(
-        cacheKey,
-        {
-          'toyList': response.toyList.map((toy) => toy.toJson()).toList(),
-          'page': page,
-          'uid': uid,
-        },
-        expiry: const Duration(minutes: 30), // 30分钟缓存
-      );
-      
-      // 同步到离线存储
-      await StorageService.instance.syncToOffline(response.toyList);
-      
-      // 预加载图片以提升用户体验
-      final imagesToPreload = response.toyList
-          .map((toy) => {
-                'url': toy.toyPicUrl,
-                'name': toy.toyName,
-              })
-          .toList();
-      
-      // 异步预加载，不阻塞数据返回
-      _imageCacheManager.preloadImages(imagesToPreload);
-      
-      return response.toyList;
-    } catch (e) {
-      // 网络错误时尝试使用离线数据
-      debugPrint('❌ HomePage: 网络请求失败 (page: $page): $e');
 
-      if (page == 1) { // 只在第一页时返回离线数据
-        debugPrint('🔄 HomePage: 尝试使用离线数据...');
-        final offlineData = await StorageService.instance.getOfflineData();
-        if (offlineData.isNotEmpty) {
-          debugPrint('✅ HomePage: 找到 ${offlineData.length} 条离线数据');
-          // 显示离线数据提示
-          if (mounted) {
-            StateManager.uiState(context).setNetworkStatus(false);
+          /*
+          // 【单机模式】注释掉本地 API 缓存读取
+          final cacheKey = 'toys_page_${page}_uid_$uid';
+          final cachedData = await StorageService.instance.getCachedApiResponse(cacheKey);
+          if (cachedData != null) {
+            final toyList = (cachedData['toyList'] as List?)
+                ?.map((json) => ToyModel.fromJson(json))
+                .toList() ?? [];
+            if (toyList.isNotEmpty) {
+              return toyList;
+            }
           }
-          return offlineData;
-        } else {
-          debugPrint('⚠️ HomePage: 没有可用的离线数据');
-        }
-      }
+          */
 
-      debugPrint('❌ HomePage: 最终失败，重新抛出异常');
-      throw Exception('网络连接失败，请检查网络设置: $e');
-      }
+          // 单机模式直接从 DAO 获取本地数据桩
+          final response = await TreasureDao.getAllToies(page, uid);
+
+          /*
+          // 【单机模式】注释掉 API 缓存写入与离线同步
+          await StorageService.instance.cacheApiResponse(
+            cacheKey,
+            {
+              'toyList': response.toyList.map((toy) => toy.toJson()).toList(),
+              'page': page,
+              'uid': uid,
+            },
+            expiry: const Duration(minutes: 30),
+          );
+          await StorageService.instance.syncToOffline(response.toyList);
+          */
+
+          return response.toyList;
+        } catch (e) {
+          debugPrint('❌ HomePage: 加载数据失败 (page: $page): $e');
+          return [];
+        }
       },
     );
   }
@@ -242,13 +181,17 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
       if (_paginationController.items.isEmpty) {
         debugPrint('🔄 HomePage: 设置加载状态...');
         if (mounted) {
-          StateManager.readUIState(context).setComponentLoading('refresh_data', true);
+          StateManager.readUIState(context)
+              .setComponentLoading('refresh_data', true);
         }
       }
 
+      // 【单机模式】已注释掉网络接口缓存清理
+      /*
       // 2. 清除相关的缓存数据（强制从服务器获取新数据）
       debugPrint('🗑️ HomePage: 清除缓存数据...');
       await CacheInterceptor.clearToysCache();
+      */
 
       // 3. 清除分页控制器的现有数据
       debugPrint('🧹 HomePage: 清除分页控制器数据...');
@@ -262,7 +205,8 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
       await _paginationController.loadInitialData();
 
       if (mounted) {
-        StateManager.readUIState(context).setComponentLoading('refresh_data', false);
+        StateManager.readUIState(context)
+            .setComponentLoading('refresh_data', false);
         StateManager.readUIState(context).setNetworkStatus(true);
       }
 
@@ -271,7 +215,8 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
       debugPrint('❌ HomePage: 刷新失败 - $e');
 
       if (mounted) {
-        StateManager.readUIState(context).setComponentLoading('refresh_data', false);
+        StateManager.readUIState(context)
+            .setComponentLoading('refresh_data', false);
         // 可以在这里显示错误提示
       }
     }
@@ -330,7 +275,6 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
     }
   }
 
-
   // 处理删除后的优化刷新（乐观更新策略）
   Future<void> _handleItemDeleted() async {
     debugPrint('🗑️ HomePage: 开始优化删除后刷新');
@@ -338,10 +282,13 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
     if (!mounted) return;
 
     try {
+      // 【单机模式】已注释掉网络接口缓存清理
+      /*
       // 1. 使用优化的缓存清理，不阻塞UI
       CacheInterceptor.clearToysCache().catchError((e) {
         debugPrint('⚠️ HomePage: 缓存清理失败，但不影响UI: $e');
       });
+      */
 
       // 2. 直接刷新数据，无需等待缓存清理
       debugPrint('🔄 HomePage: 直接刷新数据...');
@@ -367,7 +314,6 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
       _paginationController.refresh();
     }
   }
-
 
   // 实现 WidgetsBindingObserver 的生命周期方法
   @override
@@ -405,53 +351,34 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
 
     _searchController.dispose();
     _controller.dispose();
-    _searchResultsController.dispose();
-    _contentController.dispose();
     _paginationController.dispose();
     super.dispose();
   }
 
-
   void _search(String value) async {
-    if (_searchController.text.trim().isEmpty) return;
-    
+    final query = _searchController.text.trim();
+    if (query.isEmpty) return;
+
+    FocusScope.of(context).unfocus();
     StateManager.uiState(context).setComponentLoading('search', true);
-    
+
     try {
-      final query = _searchController.text.trim();
-      
-      // 先尝试从缓存获取搜索结果
-      final cachedResults = await StorageService.instance.getCachedSearchResults(query);
-      if (cachedResults != null && cachedResults.isNotEmpty) {
-        widget.onSearchResults?.call(cachedResults);
-        _searchResultsController.forward();
-        _contentController.reverse();
-        if (mounted) {
-          StateManager.uiState(context).setComponentLoading('search', false);
-        }
-        return;
-      }
-      
-      // 执行网络搜索
+      // 执行搜索（走本地 DAO）
       final results = await widget.search(query);
-      widget.onSearchResults?.call(results);
-      
-      // 动画显示搜索结果
-      _searchResultsController.forward();
-      _contentController.reverse();
-      
-    } catch (e) {
-      // 搜索失败时尝试离线搜索
-      try {
-        final offlineResults = await StorageService.instance.searchOffline(_searchController.text.trim());
-        if (offlineResults.isNotEmpty) {
-          widget.onSearchResults?.call(offlineResults);
-          _searchResultsController.forward();
-          _contentController.reverse();
-        }
-      } catch (offlineError) {
-        debugPrint('离线搜索失败: $offlineError');
+      if (results.isNotEmpty && mounted) {
+        Navigator.push(
+          context,
+          CupertinoPageRoute(
+            builder: (context) => SearchResultsPage(
+              keyword: query,
+              results: results,
+              onDataChanged: widget.onDataChanged,
+            ),
+          ),
+        );
       }
+    } catch (e) {
+      debugPrint('搜索失败: $e');
     } finally {
       if (mounted) {
         StateManager.uiState(context).setComponentLoading('search', false);
@@ -461,12 +388,8 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
 
   void clear() {
     _searchController.clear();
-    _searchResultsController.reverse().then((_) {
-      if (mounted) {
-        widget.clearSearch();
-        _contentController.forward();
-      }
-    });
+    widget.clearSearch();
+    setState(() {});
   }
 
   @override
@@ -474,200 +397,114 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin, Widge
     final double statusBarHeight = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      body: Column(
-        children: [
-          Container(
-            color: Colors.white,
-            padding: EdgeInsets.only(top: statusBarHeight),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-              child: TextField(
-                onSubmitted: _search,
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: '搜索...',
-                  hintStyle: TextStyle(
-                    color: Colors.grey[600],
+        body: Column(
+          children: [
+            Container(
+              color: Colors.white,
+              padding: EdgeInsets.only(top: statusBarHeight),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                child: TextField(
+                  onSubmitted: _search,
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: '搜索...',
+                    hintStyle: TextStyle(
+                      color: Colors.grey[600],
+                    ),
+                    prefixIcon: IconButton(
+                      icon: const Icon(Icons.person_outline),
+                      tooltip: '我的',
+                      onPressed: () {
+                        FocusScope.of(context).unfocus();
+                        widget.onOpenProfile?.call();
+                      },
+                    ),
+                    contentPadding:
+                        const EdgeInsets.fromLTRB(16.0, 12.0, 12.0, 12.0),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_searchController.text.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear, size: 20),
+                            onPressed: clear,
+                          ),
+                        IconButton(
+                          key: const Key('search_btn'),
+                          icon: const Icon(Icons.search),
+                          onPressed: () => _search(_searchController.text),
+                        ),
+                      ],
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[200],
                   ),
-                  prefixIcon: IconButton(
-                    icon: const Icon(Icons.person_outline),
-                    onPressed: widget.onOpenProfile,
-                  ),
-                  contentPadding: const EdgeInsets.fromLTRB(16.0, 12.0, 12.0, 12.0),
-                  suffixIcon: widget.searchToyList.isNotEmpty
-                  ? IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: clear
-                  )
-                  :IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: () => _search(_searchController.text),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[200],
+                  onChanged: (text) {
+                    setState(() {});
+                  },
                 ),
               ),
             ),
-          ),
-          widget.searchToyList.isNotEmpty
-          ?Center(
-            //padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            //alignment: Alignment.centerLeft,
-            child: Text(
-              '找到 ${widget.searchToyList.length} 个相关结果',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
+            Expanded(
+              child: OptimizedMasonryGrid<ToyModel>(
+                controller: _paginationController,
+                scrollController: _controller,
+                crossAxisCount: 2,
+                mainAxisSpacing: 1,
+                crossAxisSpacing: 1,
+                padding: EdgeInsets.zero,
+                itemBuilder: (context, toy, index) {
+                  return _Item(
+                    key: ValueKey(toy.id),
+                    index: index,
+                    toy: toy,
+                    onTap: () => CommonUtils.showDetail(
+                      context,
+                      index,
+                      _paginationController.items,
+                      (page) async {
+                        await _paginationController.refresh();
+                        // 触发数据变化回调来更新总价值
+                        if (widget.onDataChanged != null) {
+                          widget.onDataChanged!(1);
+                        }
+                      },
+                    ),
+                    onDeleted: () => _handleItemDeleted(),
+                  );
+                },
+                loadingWidget: const Center(child: CircularProgressIndicator()),
+                emptyWidget: const Center(
+                  child: Text('暂无数据',
+                      style: TextStyle(fontSize: 16, color: Colors.grey)),
+                ),
+                loadingMoreWidget: const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
               ),
             ),
-          )
-          :const SizedBox.shrink(),
-          SizeTransition(
-            sizeFactor: _searchResultsAnimation,
-            child: FadeTransition(
-              opacity: _searchResultsAnimation,
-              child: widget.searchToyList.isNotEmpty
-              ? Container(
-                  padding: const EdgeInsets.all(8),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final rowCount = (widget.searchToyList.length / 2).ceil();
-                      final itemHeight = (MediaQuery.of(context).size.width / 2); // childAspectRatio=1 时，高≈宽
-                      final gridHeight = rowCount * itemHeight + (rowCount - 1) * 8;
-                      return ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(context).size.height * 0.6, // 限制最大高度
-                        ),
-                        child: GridView.builder(
-                          shrinkWrap: gridHeight < MediaQuery.of(context).size.height * 0.6, 
-                          padding: EdgeInsets.zero,
-                          physics: gridHeight < MediaQuery.of(context).size.height * 0.6
-                            ? const NeverScrollableScrollPhysics()
-                            : const AlwaysScrollableScrollPhysics(),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 1,
-                          ),
-                          itemCount: widget.searchToyList.length,
-                          itemBuilder: (context, index) {
-                            final toy = widget.searchToyList[index];
-                            return GestureDetector(
-                              onTap: () => CommonUtils.showDetail(context, index, widget.searchToyList, (page) async {
-                                await _paginationController.refresh();
-                                // 触发数据变化回调来更新总价值
-                                if (widget.onDataChanged != null) {
-                                  widget.onDataChanged!(1);
-                                }
-                              }),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  color: Colors.grey[200],
-                                ),
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: ImageWithFallback(
-                                        toy: toy,
-                                        width: MediaQuery.of(context).size.width / 2,
-                                      ),    
-                                    ),
-                                    Positioned(
-                                      bottom: 10,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black.withOpacity(0.6),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          toy.toyName,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    }
-                  )
-                )
-              : const SizedBox.shrink()
-            )
-          ),
-          widget.searchToyList.isNotEmpty
-          ?const Divider()
-          :const SizedBox.shrink(),
-          Expanded(
-            child: OptimizedMasonryGrid<ToyModel>(
-              controller: _paginationController,
-              scrollController: _controller,
-              crossAxisCount: 2,
-              mainAxisSpacing: 1,
-              crossAxisSpacing: 1,
-              padding: EdgeInsets.zero,
-              itemBuilder: (context, toy, index) {
-                return _Item(
-                  key: ValueKey(toy.id),
-                  index: index,
-                  toy: toy,
-                  onTap: () => CommonUtils.showDetail(
-                    context, 
-                    index, 
-                    _paginationController.items, 
-                    (page) async {
-                      await _paginationController.refresh();
-                      // 触发数据变化回调来更新总价值
-                      if (widget.onDataChanged != null) {
-                        widget.onDataChanged!(1);
-                      }
-                    },
-                  ),
-                  onDeleted: () => _handleItemDeleted(),
-                );
-              },
-              loadingWidget: const Center(child: CircularProgressIndicator()),
-              emptyWidget: const Center(
-                child: Text('暂无数据', style: TextStyle(fontSize: 16, color: Colors.grey)),
-              ),
-              loadingMoreWidget: const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: showBtn
-      ? FloatingActionButton(
-        onPressed: (){
-          _controller.animateTo(.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.ease
-          );
-        },
-        backgroundColor: Colors.black,
-        heroTag: 3,
-        child: const Icon(Icons.arrow_upward, color: Colors.white, size: 40),
-      ): null
-    );
+          ],
+        ),
+        floatingActionButton: showBtn
+            ? FloatingActionButton(
+                onPressed: () {
+                  _controller.animateTo(.0,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.ease);
+                },
+                backgroundColor: Colors.black,
+                heroTag: 3,
+                child: const Icon(Icons.arrow_upward,
+                    color: Colors.white, size: 40),
+              )
+            : null);
   }
 }
 
@@ -687,7 +524,6 @@ class _Item extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return GestureDetector(
       onTap: onTap,
       onLongPress: () => {
@@ -696,7 +532,7 @@ class _Item extends StatelessWidget {
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('删除宝贝'),
-              content:  const Text('请谨慎操作'),
+              content: const Text('请谨慎操作'),
               actionsAlignment: MainAxisAlignment.spaceBetween,
               actions: <Widget>[
                 TextButton(
@@ -707,7 +543,7 @@ class _Item extends StatelessWidget {
                   child: const Text('不删了'),
                 ),
                 TextButton(
-                  onPressed: () async{
+                  onPressed: () async {
                     try {
                       debugPrint('🗑️ 开始删除物品');
                       debugPrint('🗑️ toy.id: "${toy.id}"');
@@ -717,10 +553,14 @@ class _Item extends StatelessWidget {
                       // 安全提取图片URL的key部分
                       String imageKey = '';
                       if (toy.toyPicUrl.isNotEmpty) {
-                        if (toy.toyPicUrl.startsWith('http://nextsticker.xyz/')) {
-                          imageKey = toy.toyPicUrl.substring('http://nextsticker.xyz/'.length);
-                        } else if (toy.toyPicUrl.startsWith('https://nextsticker.cn/')) {
-                          imageKey = toy.toyPicUrl.substring('https://nextsticker.cn/'.length);
+                        if (toy.toyPicUrl
+                            .startsWith('http://nextsticker.xyz/')) {
+                          imageKey = toy.toyPicUrl
+                              .substring('http://nextsticker.xyz/'.length);
+                        } else if (toy.toyPicUrl
+                            .startsWith('https://nextsticker.cn/')) {
+                          imageKey = toy.toyPicUrl
+                              .substring('https://nextsticker.cn/'.length);
                         } else {
                           // 如果URL格式不匹配，尝试提取文件名
                           final uri = Uri.tryParse(toy.toyPicUrl);
@@ -733,14 +573,16 @@ class _Item extends StatelessWidget {
                       debugPrint('🗑️ 提取的图片key: $imageKey');
 
                       // 调用删除API
-                      ResultModel result = await TreasureDao.deleteToy(toy.id, imageKey);
+                      ResultModel result =
+                          await TreasureDao.deleteToy(toy.id, imageKey);
                       debugPrint('🗑️ 删除API响应: ${result.deletedCount}');
 
-                      if(result.deletedCount == 1){
+                      if (result.deletedCount == 1) {
                         // 尝试删除本地文件
                         try {
                           if (toy.toyPicUrl.isNotEmpty) {
-                            await CommonUtils.deleteLocalFilesAsync([CommonUtils.removeBaseUrl(toy.toyPicUrl)]);
+                            await CommonUtils.deleteLocalFilesAsync(
+                                [CommonUtils.removeBaseUrl(toy.toyPicUrl)]);
                             debugPrint('✅ 本地文件删除成功');
                           }
                         } catch (e) {
@@ -755,7 +597,8 @@ class _Item extends StatelessWidget {
 
                         // 显示成功提示（优先显示）
                         if (context.mounted) {
-                          CommonUtils.showSnackBar(context, '删除成功', backgroundColor: Colors.green);
+                          CommonUtils.showSnackBar(context, '删除成功',
+                              backgroundColor: Colors.green);
                         }
 
                         // 延迟调用删除回调，给用户看到成功提示的时间
@@ -769,7 +612,8 @@ class _Item extends StatelessWidget {
                         if (!context.mounted) return;
                         Navigator.of(context).pop();
                         CommonUtils.show(context, '删除失败，请稍后再试');
-                        debugPrint('❌ 删除失败: deletedCount=${result.deletedCount}');
+                        debugPrint(
+                            '❌ 删除失败: deletedCount=${result.deletedCount}');
                       }
                     } catch (e) {
                       debugPrint('❌ 删除过程中发生错误: $e');
@@ -806,18 +650,20 @@ class _Item extends StatelessWidget {
                       children: [
                         Text(toy.toyName, style: const TextStyle(fontSize: 15)),
                         toy.isSelled
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'SOLD',
-                              style: TextStyle(color: Colors.white, fontSize: 12),
-                            ),
-                          )
-                        : Container()
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'SOLD',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 12),
+                                ),
+                              )
+                            : Container()
                       ],
                     ),
                   ),

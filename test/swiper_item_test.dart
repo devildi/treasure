@@ -31,7 +31,8 @@ void main() {
       );
     });
 
-    testWidgets('displays toy information correctly', (WidgetTester tester) async {
+    testWidgets('displays toy information correctly',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -47,25 +48,90 @@ void main() {
       // Verify toy name is displayed
       expect(find.text('Test Toy'), findsOneWidget);
 
-      // Verify label is displayed
-      expect(find.text('Test Label'), findsOneWidget);
+      // Verify label is displayed with blue background and white text
+      final labelFinder = find.text('Test Label');
+      expect(labelFinder, findsOneWidget);
+      final labelTextWidget = tester.widget<Text>(labelFinder);
+      expect(labelTextWidget.style?.color, Colors.white);
+      final labelContainer = tester.widget<Container>(
+        find.ancestor(of: labelFinder, matching: find.byType(Container)).first,
+      );
+      final decoration = labelContainer.decoration as BoxDecoration;
+      expect(decoration.color, Colors.blue);
 
       // Verify description is displayed
       expect(find.text('Test description'), findsOneWidget);
 
-      // Verify prices are displayed
-      expect(find.text('购买价：¥100'), findsOneWidget);
-      expect(find.text('二手价：¥80'), findsOneWidget);
+      // Verify purchase price is displayed as 入手价 and sell price is removed
+      expect(find.text('入手价：¥100'), findsOneWidget);
+      expect(find.text('二手价：¥80'), findsNothing);
 
-      // Verify purchase date is displayed
-      expect(find.text('购买日期：24-01-01'), findsOneWidget);
+      // Verify purchase date and holding days are displayed
+      expect(find.text('入手日期：24-01-01'), findsOneWidget);
+      final holdingDaysFinder = find.text(
+        '已入手${ToyDetailCard.calculateHoldingDays(mockToy.createAt)}天',
+      );
+      expect(holdingDaysFinder, findsOneWidget);
 
-      // Verify buttons are displayed
-      expect(find.text('闲鱼二手价'), findsOneWidget);
-      expect(find.text('保存'), findsOneWidget);
+      // Verify label and holding days are right-aligned
+      final labelRight = tester
+          .getTopRight(
+            find
+                .ancestor(of: labelFinder, matching: find.byType(Container))
+                .first,
+          )
+          .dx;
+      final holdingDaysRight = tester.getTopRight(holdingDaysFinder).dx;
+      expect((labelRight - holdingDaysRight).abs(), lessThan(1.0));
+
+      // Verify buttons are removed
+      expect(find.text('闲鱼二手价'), findsNothing);
+      expect(find.text('保存'), findsNothing);
     });
 
-    testWidgets('displays sell price placeholder when sellPrice is 0', (WidgetTester tester) async {
+    test(
+        'ToyDetailCard.calculateHoldingDays calculates days correctly including today',
+        () {
+      final now = DateTime.now();
+      final todayStr = now.toIso8601String();
+      final yesterdayStr =
+          now.subtract(const Duration(days: 1)).toIso8601String();
+      final fiveDaysAgoStr =
+          now.subtract(const Duration(days: 5)).toIso8601String();
+
+      // Today should count as 1 day (算今天)
+      expect(ToyDetailCard.calculateHoldingDays(todayStr), 1);
+      // Yesterday should count as 2 days
+      expect(ToyDetailCard.calculateHoldingDays(yesterdayStr), 2);
+      // 5 days ago should count as 6 days
+      expect(ToyDetailCard.calculateHoldingDays(fiveDaysAgoStr), 6);
+      // Null or empty string should default to 1
+      expect(ToyDetailCard.calculateHoldingDays(null), 1);
+      expect(ToyDetailCard.calculateHoldingDays(''), 1);
+      expect(ToyDetailCard.calculateHoldingDays('invalid-date'), 1);
+    });
+
+    testWidgets('does not display label badge when labels is empty',
+        (WidgetTester tester) async {
+      mockToy.labels = '';
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ToyDetailCard(
+              toy: mockToy,
+              dialogWidth: 300,
+              getMore: (page) async {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Test Label'), findsNothing);
+    });
+
+    testWidgets('does not display sell price even when sellPrice is 0',
+        (WidgetTester tester) async {
       mockToy.sellPrice = 0;
 
       await tester.pumpWidget(
@@ -80,11 +146,12 @@ void main() {
         ),
       );
 
-      expect(find.text('设置卖出价格'), findsOneWidget);
+      expect(find.text('设置卖出价格'), findsNothing);
       expect(find.text('二手价：¥0'), findsNothing);
     });
 
-    testWidgets('displays description placeholder when description is empty', (WidgetTester tester) async {
+    testWidgets('displays description placeholder when description is empty',
+        (WidgetTester tester) async {
       mockToy.description = '';
 
       await tester.pumpWidget(
@@ -102,7 +169,8 @@ void main() {
       expect(find.text('点击添加宝贝的描述'), findsOneWidget);
     });
 
-    testWidgets('switch toggles correctly', (WidgetTester tester) async {
+    testWidgets('switch toggles correctly and updates status badge',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -114,6 +182,11 @@ void main() {
           ),
         ),
       );
+
+      // Verify status badge and label
+      expect(find.byKey(const Key('toy_status_badge')), findsOneWidget);
+      expect(find.text('在库收藏'), findsOneWidget);
+      expect(find.text('已出 / 损坏'), findsNothing);
 
       // Find the switch
       final switchFinder = find.byType(Switch);
@@ -127,12 +200,15 @@ void main() {
       await tester.tap(switchFinder);
       await tester.pump();
 
-      // Verify the switch state changed
+      // Verify the switch state and label changed
       switchWidget = tester.widget(switchFinder);
       expect(switchWidget.value, true);
+      expect(find.text('已出 / 损坏'), findsOneWidget);
+      expect(find.text('在库收藏'), findsNothing);
     });
 
-    testWidgets('shows price dialog when tapping on toy name', (WidgetTester tester) async {
+    testWidgets('shows price dialog when tapping on toy name',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -150,8 +226,10 @@ void main() {
         of: find.text('Test Toy'),
         matching: find.byType(GestureDetector),
       );
+      await tester.ensureVisible(gestureDetector);
       await tester.tap(gestureDetector);
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       // Verify dialog appears
       expect(find.text('设置宝贝名字'), findsOneWidget);
@@ -160,7 +238,8 @@ void main() {
       expect(find.text('确定'), findsOneWidget);
     });
 
-    testWidgets('renders save button correctly', (WidgetTester tester) async {
+    testWidgets('buttons are removed in offline compact mode',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -173,12 +252,13 @@ void main() {
         ),
       );
 
-      // Verify save button exists
-      expect(find.text('保存'), findsOneWidget);
-      expect(find.text('闲鱼二手价'), findsOneWidget);
+      // Verify buttons are removed
+      expect(find.text('保存'), findsNothing);
+      expect(find.text('闲鱼二手价'), findsNothing);
     });
 
-    testWidgets('aspect ratio is calculated correctly', (WidgetTester tester) async {
+    testWidgets('aspect ratio is calculated correctly',
+        (WidgetTester tester) async {
       mockToy.picWidth = 400;
       mockToy.picHeight = 200;
 
@@ -194,11 +274,13 @@ void main() {
         ),
       );
 
-      final aspectRatioWidget = tester.widget<AspectRatio>(find.byType(AspectRatio));
+      final aspectRatioWidget =
+          tester.widget<AspectRatio>(find.byType(AspectRatio));
       expect(aspectRatioWidget.aspectRatio, 2.0); // 400/200 = 2.0
     });
 
-    testWidgets('switch exists and can be interacted with', (WidgetTester tester) async {
+    testWidgets('switch exists and can be interacted with',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -334,7 +416,7 @@ void main() {
       expect(json['picHeight'], 300);
       expect(json['description'], 'Test description');
       expect(json['labels'], 'Test Label');
-      expect(json['owner'], owner);
+      expect(json['owner'], owner.toJson());
       expect(json['price'], 100);
       expect(json['sellPrice'], 80);
       expect(json['createAt'], '2024-01-01');

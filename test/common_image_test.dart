@@ -31,7 +31,8 @@ void main() {
       );
     });
 
-    testWidgets('creates widget with required parameters', (WidgetTester tester) async {
+    testWidgets('creates widget with required parameters',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -47,7 +48,8 @@ void main() {
       expect(find.byType(ImageWithFallback), findsOneWidget);
     });
 
-    testWidgets('passes correct parameters to OptimizedToyImage', (WidgetTester tester) async {
+    testWidgets('passes correct parameters to OptimizedToyImage',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -165,25 +167,28 @@ void main() {
       expect(find.byType(ImageWithFallback), findsOneWidget);
     });
 
-    testWidgets('can be used multiple times in widget tree', (WidgetTester tester) async {
+    testWidgets('can be used multiple times in widget tree',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: Column(
-              children: [
-                ImageWithFallback(
-                  toy: mockToy,
-                  width: 100.0,
-                ),
-                ImageWithFallback(
-                  toy: mockToy,
-                  width: 150.0,
-                ),
-                ImageWithFallback(
-                  toy: mockToy,
-                  width: 200.0,
-                ),
-              ],
+            body: SingleChildScrollView(
+              child: Column(
+                children: [
+                  ImageWithFallback(
+                    toy: mockToy,
+                    width: 100.0,
+                  ),
+                  ImageWithFallback(
+                    toy: mockToy,
+                    width: 150.0,
+                  ),
+                  ImageWithFallback(
+                    toy: mockToy,
+                    width: 200.0,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

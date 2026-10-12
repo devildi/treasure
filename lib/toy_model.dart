@@ -30,6 +30,33 @@ class OwnerModel {
       "family": family,
     };
   }
+
+  OwnerModel copyWith({
+    String? name,
+    String? uid,
+    String? avatar,
+    String? family,
+  }) {
+    return OwnerModel(
+      name: name ?? this.name,
+      uid: uid ?? this.uid,
+      avatar: avatar ?? this.avatar,
+      family: family ?? this.family,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is OwnerModel &&
+        other.name == name &&
+        other.uid == uid &&
+        other.avatar == avatar &&
+        other.family == family;
+  }
+
+  @override
+  int get hashCode => Object.hash(name, uid, avatar, family);
 }
 
 class PriceCountModel {
@@ -165,16 +192,16 @@ class ToyModel {
     try {
       return ToyModel(
         id: json['_id'] ?? json['id'] ?? '',
-        toyName : json['toyName'] ?? '',
-        toyPicUrl : json['toyPicUrl'] ?? '',
-        localUrl : json['localUrl'] ?? '',
-        picWidth : _safeToDouble(json['picWidth']),
-        picHeight : _safeToDouble(json['picHeight']),
-        description : json['description']?? '',
-        labels : json['labels'] ?? '',
-        owner : _parseOwner(json['owner']),
-        price : _safeToDouble(json['price']),
-        sellPrice : _safeToDouble(json['sellPrice']),
+        toyName: json['toyName'] ?? '',
+        toyPicUrl: json['toyPicUrl'] ?? '',
+        localUrl: json['localUrl'] ?? '',
+        picWidth: _safeToDouble(json['picWidth']),
+        picHeight: _safeToDouble(json['picHeight']),
+        description: json['description'] ?? '',
+        labels: json['labels'] ?? '',
+        owner: _parseOwner(json['owner']),
+        price: _safeToDouble(json['price']),
+        sellPrice: _safeToDouble(json['sellPrice']),
         isSelled: json["isSelled"] ?? false,
         createAt: json["createAt"] ?? '',
         sellAt: json["sellAt"] ?? '',
@@ -199,8 +226,8 @@ class ToyModel {
     }
 
     // 检查Map是否包含有效数据（至少有一个非空字段）
-    final hasValidData = ownerData.values.any((value) =>
-        value != null && value.toString().trim().isNotEmpty);
+    final hasValidData = ownerData.values
+        .any((value) => value != null && value.toString().trim().isNotEmpty);
 
     if (!hasValidData) {
       return OwnerModel();
@@ -225,34 +252,30 @@ class ToyModel {
     return 0.0;
   }
 
-  Map<String, dynamic> toJson() =>
-    {
-      'id': id,
-      'toyName': toyName,
-      'toyPicUrl': toyPicUrl,
-      'localUrl': localUrl,
-      'picWidth': picWidth,
-      'picHeight': picHeight,
-      'description': description,
-      'labels': labels,
-      'owner': owner.toJson(),
-      'price': price,
-      'sellPrice': sellPrice,
-      'isSelled': isSelled,
-      'sellAt': sellAt,
-      "createAt": createAt
-    };
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'toyName': toyName,
+        'toyPicUrl': toyPicUrl,
+        'localUrl': localUrl,
+        'picWidth': picWidth,
+        'picHeight': picHeight,
+        'description': description,
+        'labels': labels,
+        'owner': owner.toJson(),
+        'price': price,
+        'sellPrice': sellPrice,
+        'isSelled': isSelled,
+        'sellAt': sellAt,
+        "createAt": createAt
+      };
 }
 
 class AllToysModel {
   final List<ToyModel> toyList;
-  AllToysModel({
-    required this.toyList
-  });
-  factory AllToysModel.fromJson(List json){
+  AllToysModel({required this.toyList});
+  factory AllToysModel.fromJson(List json) {
     return AllToysModel(
-      toyList: json.map((i) => ToyModel.fromJson(i)).toList()
-    );
+        toyList: json.map((i) => ToyModel.fromJson(i)).toList());
   }
 }
 
@@ -269,10 +292,9 @@ class ReturnBody {
 
   factory ReturnBody.fromJson(Map<String, dynamic> json) {
     return ReturnBody(
-      width: _safeToDouble(json["width"]),
-      height: _safeToDouble(json["height"]),
-      key: json["key"] ?? ''
-    );
+        width: _safeToDouble(json["width"]),
+        height: _safeToDouble(json["height"]),
+        key: json["key"] ?? '');
   }
 
   // 安全的数字转换方法
@@ -292,10 +314,6 @@ class ReturnBody {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      "width": width,
-      "height": height,
-      "key": key
-    };
+    return {"width": width, "height": height, "key": key};
   }
 }

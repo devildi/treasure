@@ -1,9 +1,43 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import 'package:treasure/core/storage/storage_manager.dart';
 import 'package:treasure/core/storage/storage_service.dart';
 import 'package:treasure/toy_model.dart';
 
+class FakePathProviderPlatform extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
+  final String testDir;
+  FakePathProviderPlatform(this.testDir);
+
+  @override
+  Future<String?> getApplicationDocumentsPath() async => '$testDir/documents';
+
+  @override
+  Future<String?> getTemporaryPath() async => '$testDir/temp';
+}
+
 void main() {
+  late Directory tempDir;
+
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    tempDir = await Directory.systemTemp.createTemp('storage_test_');
+    PathProviderPlatform.instance = FakePathProviderPlatform(tempDir.path);
+    SharedPreferences.setMockInitialValues({});
+    await StorageService.instance.initialize();
+  });
+
+  tearDownAll(() async {
+    await Hive.close();
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
+  });
+
   group('本地存储优化测试', () {
     group('CacheManager Tests', () {
       late CacheManager cacheManager;
@@ -17,7 +51,8 @@ void main() {
         const cacheKey = 'test_cache';
 
         await cacheManager.saveCache(cacheKey, testData);
-        final loadedData = await cacheManager.loadCache<Map<String, dynamic>>(cacheKey);
+        final loadedData =
+            await cacheManager.loadCache<Map<String, dynamic>>(cacheKey);
 
         expect(loadedData, isNotNull);
         expect(loadedData!['key'], 'value');
@@ -29,7 +64,7 @@ void main() {
         const cacheKey = 'expiry_test';
 
         await cacheManager.saveCache(
-          cacheKey, 
+          cacheKey,
           testData,
           expiry: const Duration(milliseconds: 100),
         );
@@ -52,7 +87,8 @@ void main() {
           compress: true,
         );
 
-        final loadedData = await cacheManager.loadCache<Map<String, dynamic>>(cacheKey);
+        final loadedData =
+            await cacheManager.loadCache<Map<String, dynamic>>(cacheKey);
         expect(loadedData, isNotNull);
         expect((loadedData!['data'] as List).length, 1000);
       });
@@ -61,8 +97,9 @@ void main() {
     group('OfflineDataManager Tests', () {
       late OfflineDataManager offlineManager;
 
-      setUp(() {
+      setUp(() async {
         offlineManager = OfflineDataManager();
+        await offlineManager.clearOfflineData();
       });
 
       test('should save and retrieve offline toys', () async {
@@ -125,11 +162,11 @@ void main() {
         ];
 
         await offlineManager.saveToysForOffline(toys);
-        
+
         final carResults = await offlineManager.searchOfflineToys('car');
         expect(carResults.length, 1);
         expect(carResults[0].toyName, 'Red Car');
-        
+
         final blueResults = await offlineManager.searchOfflineToys('blue');
         expect(blueResults.length, 1);
         expect(blueResults[0].toyName, 'Blue Ball');
@@ -157,7 +194,7 @@ void main() {
         );
 
         await offlineManager.saveToyForOffline(testToy);
-        
+
         final updatedStatus = await offlineManager.getOfflineStatus();
         expect(updatedStatus['totalItems'], 1);
         expect(updatedStatus['lastSyncTime'], isNotNull);
@@ -173,7 +210,7 @@ void main() {
 
       test('should get storage statistics', () async {
         final stats = await cleanupManager.getStorageStats();
-        
+
         expect(stats, isA<Map<String, dynamic>>());
         expect(stats.containsKey('cacheSize'), true);
         expect(stats.containsKey('dataSize'), true);
@@ -184,20 +221,21 @@ void main() {
       test('should format file sizes correctly', () {
         expect(StorageCleanupManager.formatSize(500), '500B');
         expect(StorageCleanupManager.formatSize(1536), '1.5KB'); // 1.5 * 1024
-        expect(StorageCleanupManager.formatSize(2097152), '2.0MB'); // 2 * 1024 * 1024
+        expect(StorageCleanupManager.formatSize(2097152),
+            '2.0MB'); // 2 * 1024 * 1024
       });
     });
 
     group('StorageService Integration Tests', () {
       test('should handle API response caching', () async {
         final service = StorageService.instance;
-        
+
         const endpoint = 'test_api';
         const response = {'data': 'test', 'status': 'ok'};
-        
+
         await service.cacheApiResponse(endpoint, response);
         final cachedResponse = await service.getCachedApiResponse(endpoint);
-        
+
         expect(cachedResponse, isNotNull);
         expect(cachedResponse!['data'], 'test');
         expect(cachedResponse['status'], 'ok');
@@ -205,7 +243,7 @@ void main() {
 
       test('should handle search result caching', () async {
         final service = StorageService.instance;
-        
+
         final testToys = [
           ToyModel(
             id: 'search_1',
@@ -223,10 +261,10 @@ void main() {
             isSelled: false,
           ),
         ];
-        
+
         const query = 'search test';
         await service.cacheSearchResults(query, testToys);
-        
+
         final cachedResults = await service.getCachedSearchResults(query);
         expect(cachedResults, isNotNull);
         expect(cachedResults!.length, 1);
@@ -235,39 +273,43 @@ void main() {
 
       test('should manage storage settings', () async {
         final service = StorageService.instance;
-        
+
         await service.saveSetting('test_bool', true);
         await service.saveSetting('test_int', 42);
         await service.saveSetting('test_string', 'hello');
-        
+
         expect(service.getSetting<bool>('test_bool'), true);
         expect(service.getSetting<int>('test_int'), 42);
         expect(service.getSetting<String>('test_string'), 'hello');
-        
+
         // 测试默认值
-        expect(service.getSetting<bool>('non_existent', defaultValue: false), false);
+        expect(service.getSetting<bool>('non_existent', defaultValue: false),
+            false);
       });
     });
 
     group('Performance and Edge Cases', () {
       test('should handle large data sets efficiently', () async {
         final cacheManager = CacheManager();
-        
+
         // 测试大量数据
-        final largeDataSet = List.generate(10000, (i) => {
-          'id': i,
-          'name': 'Item $i',
-          'data': List.generate(10, (j) => 'data_${i}_$j'),
-        });
-        
+        final largeDataSet = List.generate(
+            10000,
+            (i) => {
+                  'id': i,
+                  'name': 'Item $i',
+                  'data': List.generate(10, (j) => 'data_${i}_$j'),
+                });
+
         final startTime = DateTime.now();
-        await cacheManager.saveCache('large_dataset', largeDataSet, compress: true);
+        await cacheManager.saveCache('large_dataset', largeDataSet,
+            compress: true);
         final saveTime = DateTime.now().difference(startTime);
-        
+
         final loadStartTime = DateTime.now();
         final loaded = await cacheManager.loadCache('large_dataset');
         final loadTime = DateTime.now().difference(loadStartTime);
-        
+
         expect(loaded, isNotNull);
         expect((loaded as List).length, 10000);
         expect(saveTime.inMilliseconds, lessThan(5000)); // 应该在5秒内完成
@@ -276,17 +318,19 @@ void main() {
 
       test('should handle concurrent operations', () async {
         final cacheManager = CacheManager();
-        
+
         // 并发保存多个缓存
-        final futures = List.generate(10, (i) => 
-          cacheManager.saveCache('concurrent_$i', {'index': i, 'data': 'test_$i'})
-        );
-        
+        final futures = List.generate(
+            10,
+            (i) => cacheManager
+                .saveCache('concurrent_$i', {'index': i, 'data': 'test_$i'}));
+
         await Future.wait(futures);
-        
+
         // 验证所有数据都正确保存
         for (int i = 0; i < 10; i++) {
-          final data = await cacheManager.loadCache<Map<String, dynamic>>('concurrent_$i');
+          final data = await cacheManager
+              .loadCache<Map<String, dynamic>>('concurrent_$i');
           expect(data, isNotNull);
           expect(data!['index'], i);
           expect(data['data'], 'test_$i');
@@ -295,30 +339,36 @@ void main() {
 
       test('should handle storage limit gracefully', () async {
         final offlineManager = OfflineDataManager();
-        
+
         // 测试超出存储限制的情况
-        final toys = List.generate(600, (i) => ToyModel( // 超过maxOfflineItems
-          id: 'limit_test_$i',
-          toyName: 'Toy $i',
-          toyPicUrl: '',
-          picWidth: 0,
-          picHeight: 0,
-          description: '',
-          labels: '',
-          owner: OwnerModel(),
-          price: 100,
-          sellPrice: 80,
-          createAt: DateTime.now().subtract(Duration(days: i)).toIso8601String(),
-          sellAt: '',
-          isSelled: false,
-        ));
-        
+        final toys = List.generate(
+            600,
+            (i) => ToyModel(
+                  // 超过maxOfflineItems
+                  id: 'limit_test_$i',
+                  toyName: 'Toy $i',
+                  toyPicUrl: '',
+                  picWidth: 0,
+                  picHeight: 0,
+                  description: '',
+                  labels: '',
+                  owner: OwnerModel(),
+                  price: 100,
+                  sellPrice: 80,
+                  createAt: DateTime.now()
+                      .subtract(Duration(days: i))
+                      .toIso8601String(),
+                  sellAt: '',
+                  isSelled: false,
+                ));
+
         await offlineManager.saveToysForOffline(toys);
         final savedToys = await offlineManager.getOfflineToys();
-        
+
         // 应该不超过最大限制
-        expect(savedToys.length, lessThanOrEqualTo(StorageManager.maxOfflineItems));
-        
+        expect(savedToys.length,
+            lessThanOrEqualTo(StorageManager.maxOfflineItems));
+
         // 应该保留最新的数据
         expect(savedToys.first.toyName, contains('Toy'));
       });

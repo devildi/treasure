@@ -1,15 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:treasure/core/state/user_state.dart';
 import 'package:treasure/core/state/ui_state.dart';
 import 'package:treasure/core/state/state_persistence.dart';
 import 'package:treasure/toy_model.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('State Management Tests', () {
     group('UserState Tests', () {
       late UserState userState;
 
       setUp(() {
+        SharedPreferences.setMockInitialValues({});
         userState = UserState();
       });
 
@@ -53,13 +57,33 @@ void main() {
         expect(userState.currentUser.uid, isEmpty);
       });
 
+      test('should update user successfully', () async {
+        final initialUser = OwnerModel(
+          uid: 'test_uid_123',
+          name: 'Old Name',
+          avatar: '',
+        );
+        await userState.login(initialUser);
+
+        final updatedUser = initialUser.copyWith(
+          name: 'New Name',
+          avatar: 'https://example.com/avatar.jpg',
+        );
+        final result = await userState.updateUser(updatedUser);
+
+        expect(result, true);
+        expect(userState.currentUser.name, 'New Name');
+        expect(userState.currentUser.avatar, 'https://example.com/avatar.jpg');
+      });
+
       test('should update user preferences', () async {
         await userState.updatePreference('theme', 'dark');
         await userState.updatePreference('language', 'zh');
 
         expect(userState.getPreference('theme'), 'dark');
         expect(userState.getPreference('language'), 'zh');
-        expect(userState.getPreference('unknown', defaultValue: 'default'), 'default');
+        expect(userState.getPreference('unknown', defaultValue: 'default'),
+            'default');
       });
 
       test('should handle batch preference updates', () async {
@@ -213,6 +237,11 @@ void main() {
     });
 
     group('State Persistence Tests', () {
+      setUp(() {
+        TestWidgetsFlutterBinding.ensureInitialized();
+        SharedPreferences.setMockInitialValues({});
+      });
+
       test('should create SharedPreferences persistence by default', () {
         final persistence = StatePersistence();
         expect(persistence, isNotNull);

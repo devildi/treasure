@@ -32,7 +32,8 @@ void main() {
 
       test('searchToies method exists and can be called', () async {
         // Test that the method exists and accepts parameters
-        expect(() => TreasureDao.searchToies('keyword', 'uid'), isA<Function>());
+        expect(
+            () => TreasureDao.searchToies('keyword', 'uid'), isA<Function>());
       });
 
       test('getAllToies method exists and can be called', () async {
@@ -78,7 +79,8 @@ void main() {
       });
 
       test('searchToies accepts string parameters', () {
-        expect(() => TreasureDao.searchToies('keyword', 'uid'), isA<Function>());
+        expect(
+            () => TreasureDao.searchToies('keyword', 'uid'), isA<Function>());
         expect(() => TreasureDao.searchToies('', ''), isA<Function>());
       });
 
@@ -108,46 +110,55 @@ void main() {
       test('register returns Future', () {
         final result = TreasureDao.register({});
         expect(result, isA<Future>());
+        result.then<void>((_) {}, onError: (_) {});
       });
 
       test('login returns Future', () {
         final result = TreasureDao.login({});
         expect(result, isA<Future>());
+        result.then<void>((_) {}, onError: (_) {});
       });
 
       test('getToken returns Future', () {
         final result = TreasureDao.getToken('test');
         expect(result, isA<Future>());
+        result.then<void>((_) {}, onError: (_) {});
       });
 
       test('poMicro returns Future', () {
         final result = TreasureDao.poMicro({});
         expect(result, isA<Future>());
+        result.then<void>((_) {}, onError: (_) {});
       });
 
       test('searchToies returns Future<AllToysModel>', () {
         final result = TreasureDao.searchToies('keyword', 'uid');
         expect(result, isA<Future<AllToysModel>>());
+        result.then<void>((_) {}, onError: (_) {});
       });
 
       test('getAllToies returns Future<AllToysModel>', () {
         final result = TreasureDao.getAllToies(1, 'uid');
         expect(result, isA<Future<AllToysModel>>());
+        result.then<void>((_) {}, onError: (_) {});
       });
 
       test('getTotalPriceAndCount returns Future', () {
         final result = TreasureDao.getTotalPriceAndCount('uid');
         expect(result, isA<Future>());
+        result.then<void>((_) {}, onError: (_) {});
       });
 
       test('modifyToy returns Future', () {
         final result = TreasureDao.modifyToy({});
         expect(result, isA<Future>());
+        result.then<void>((_) {}, onError: (_) {});
       });
 
       test('deleteToy returns Future', () {
         final result = TreasureDao.deleteToy('id', 'key');
         expect(result, isA<Future>());
+        result.then<void>((_) {}, onError: (_) {});
       });
     });
   });

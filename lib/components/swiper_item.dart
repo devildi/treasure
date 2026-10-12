@@ -1,14 +1,17 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:treasure/tools.dart';
 import 'package:intl/intl.dart';
-import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import 'package:share_plus/share_plus.dart';
+// import 'package:dio/dio.dart';
+// import 'package:path_provider/path_provider.dart';
+// import 'dart:io';
+// import 'package:share_plus/share_plus.dart';
 import '../dao.dart';
+import '../toy_model.dart';
 import 'package:treasure/components/common_image.dart';
+import 'package:treasure/components/interactive_feedback.dart';
 import 'package:treasure/core/state/state_manager.dart';
-import 'package:treasure/core/storage/storage_service.dart';
+// import 'package:treasure/core/storage/storage_service.dart';
 
 class ToyDetailCard extends StatefulWidget {
   final dynamic toy;
@@ -25,26 +28,59 @@ class ToyDetailCard extends StatefulWidget {
     this.toyIndex,
   }) : super(key: key);
 
+  static String formatPurchaseDate(String? createAt) {
+    if (createAt == null || createAt.isEmpty) {
+      return '';
+    }
+    try {
+      final date = DateTime.parse(createAt);
+      return DateFormat('yy-MM-dd').format(date);
+    } catch (_) {
+      return createAt;
+    }
+  }
+
+  static int calculateHoldingDays(String? createAt) {
+    if (createAt == null || createAt.isEmpty) {
+      return 1;
+    }
+    try {
+      final date = DateTime.parse(createAt);
+      final now = DateTime.now();
+      final start = DateTime(date.year, date.month, date.day);
+      final today = DateTime(now.year, now.month, now.day);
+      final diff = today.difference(start).inDays;
+      return diff >= 0 ? diff + 1 : 1;
+    } catch (_) {
+      return 1;
+    }
+  }
+
   @override
   State<ToyDetailCard> createState() => _ToyDetailCardState();
 }
 
 class _ToyDetailCardState extends State<ToyDetailCard> {
-  bool isSharing = false;
+  // 【单机模式】已移除闲鱼二手价与保存按钮
+  // bool isSharing = false;
   late dynamic currentToy; // 本地状态变量存储toy数据
 
   @override
   void initState() {
     super.initState();
     // 初始化时强制使用列表中最新的toy数据，确保显示最新信息
-    if (widget.toyList != null && widget.toyIndex != null && widget.toyIndex! < widget.toyList!.length) {
+    if (widget.toyList != null &&
+        widget.toyIndex != null &&
+        widget.toyIndex! < widget.toyList!.length) {
       // 强制使用列表中的最新数据
       currentToy = widget.toyList![widget.toyIndex!];
-      debugPrint('🔄 弹出层初始化: 强制使用列表中的最新数据 - ${currentToy.toyName} (sellPrice: ${currentToy.sellPrice})');
+      debugPrint(
+          '🔄 弹出层初始化: 强制使用列表中的最新数据 - ${currentToy.toyName} (sellPrice: ${currentToy.sellPrice})');
     } else {
       // 如果没有列表引用或索引无效，则使用传入的toy数据
       currentToy = widget.toy;
-      debugPrint('🔄 弹出层初始化: 回退使用传入的toy数据 - ${currentToy.toyName} (sellPrice: ${currentToy.sellPrice})');
+      debugPrint(
+          '🔄 弹出层初始化: 回退使用传入的toy数据 - ${currentToy.toyName} (sellPrice: ${currentToy.sellPrice})');
     }
   }
 
@@ -62,20 +98,21 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
           currentToy = widget.toyList![widget.toyIndex!];
         });
       }
-      debugPrint('🔄 弹出层页面切换: 更新为第${widget.toyIndex}项数据 - ${currentToy.toyName} (sellPrice: ${currentToy.sellPrice})');
+      debugPrint(
+          '🔄 弹出层页面切换: 更新为第${widget.toyIndex}项数据 - ${currentToy.toyName} (sellPrice: ${currentToy.sellPrice})');
     }
     // 如果索引没变，但是列表中的数据可能已经被其他地方更新了
     else if (widget.toyList != null &&
-             widget.toyIndex != null &&
-             widget.toyIndex! < widget.toyList!.length) {
+        widget.toyIndex != null &&
+        widget.toyIndex! < widget.toyList!.length) {
       final latestToy = widget.toyList![widget.toyIndex!];
 
       // 详细比较关键字段，确保数据同步
       bool needsUpdate = latestToy.sellPrice != currentToy.sellPrice ||
-                        latestToy.price != currentToy.price ||
-                        latestToy.toyName != currentToy.toyName ||
-                        latestToy.description != currentToy.description ||
-                        latestToy.isSelled != currentToy.isSelled;
+          latestToy.price != currentToy.price ||
+          latestToy.toyName != currentToy.toyName ||
+          latestToy.description != currentToy.description ||
+          latestToy.isSelled != currentToy.isSelled;
 
       if (needsUpdate) {
         if (mounted) {
@@ -84,48 +121,39 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
             currentToy = latestToy;
           });
         }
-        debugPrint('🔄 弹出层数据同步: 从列表中获取最新数据 - ${currentToy.toyName} (sellPrice: ${currentToy.sellPrice})');
+        debugPrint(
+            '🔄 弹出层数据同步: 从列表中获取最新数据 - ${currentToy.toyName} (sellPrice: ${currentToy.sellPrice})');
       }
     }
   }
 
   // 强制清除所有可能的缓存
+  // 【单机模式】已注释掉缓存与网络缓存清理
+  /*
   Future<void> _clearAllCaches() async {
-    try {
-      debugPrint('🧹 开始清除所有缓存...');
-
-      // 1. 清除StorageService的缓存
-      await StorageService.clearAllCaches();
-      debugPrint('✅ StorageService缓存已清除');
-
-      // 2. 清除Dio的可能缓存（如果有的话）
-      // 这个方法会重新初始化网络客户端，清除任何内存中的缓存
-      TreasureDao.clearNetworkCache();
-      debugPrint('✅ 网络缓存已清除');
-
-      debugPrint('🧹 所有缓存清除完成');
-    } catch (e) {
-      debugPrint('⚠️ 清除缓存时出现错误: $e');
-    }
+    ...
   }
+  */
 
-  List<String> getTitle(str){
+  List<String> getTitle(str) {
     switch (str) {
-      case 'sellPrice':
-        return ['设置二手价格', '请输入价格'];
+      // 【单机模式】已移除设置卖出价格
+      // case 'sellPrice':
+      //   return ['设置二手价格', '请输入价格'];
       case 'toyName':
         return ['设置宝贝名字', '请输入宝贝名字'];
       case 'price':
-        return ['设置购买价格', '请输入价格'];
+        return ['设置入手价格', '请输入价格'];
       case 'description':
         return ['设置宝贝的详情', '请输入宝贝描述'];
       case 'labels':
-        return ['设置标签', '请输入标签名称'];
+        return ['设置分类标签', '请输入标签名称'];
       default:
         return [''];
     }
   }
-  void setPrice(context, currentToy, setState, tag)async{
+
+  void setPrice(context, currentToy, setState, tag) async {
     final controller = TextEditingController();
     final newPrice = await showDialog(
       context: context,
@@ -144,7 +172,9 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
             ),
             TextButton(
               onPressed: () {
-                final price = (tag == 'toyName' || tag == 'description' || tag == 'labels') ? controller.text : int.tryParse(controller.text);
+                final price = (tag == 'toyName' || tag == 'description')
+                    ? controller.text
+                    : int.tryParse(controller.text);
                 Navigator.pop(context, price);
               },
               child: const Text('确定'),
@@ -156,46 +186,22 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
 
     bool wasUpdated = false;
 
-    if(tag == 'sellPrice'){
+    // 【单机模式】已移除设置卖出价格逻辑
+    /*
+    if (tag == 'sellPrice') {
       if (newPrice != null && newPrice != 0) {
-        debugPrint('💰 准备更新二手价格: $newPrice (当前: ${currentToy.sellPrice})');
-        debugPrint('💰 currentToy对象ID: ${currentToy.hashCode}');
-
-        // 直接修改属性
-        currentToy.sellPrice = newPrice;
-
-        // 同时更新原始列表中对应的数据，确保下次打开弹出层时数据一致
-        if (widget.toyList != null && widget.toyIndex != null && widget.toyIndex! < widget.toyList!.length) {
-          widget.toyList![widget.toyIndex!].sellPrice = newPrice;
-          debugPrint('💰 同时更新列表中索引${widget.toyIndex}的数据: sellPrice=$newPrice');
-        }
-
-        // 强制setState重建整个Widget树
-        if (mounted) {
-          setState(() {
-            // 什么都不做，只是触发重建
-          });
-        }
-        wasUpdated = true;
-
-        debugPrint('💰 二手价格已更新: ${currentToy.sellPrice}');
-        debugPrint('💰 更新后currentToy对象ID: ${currentToy.hashCode}');
-
-        // 立即强制重新构建UI
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              debugPrint('💰 PostFrame回调 - 强制UI重建显示新价格');
-            });
-          }
-        });
+        ...
       }
-    } else if(tag == 'toyName'){
+    } else
+    */
+    if (tag == 'toyName') {
       if (newPrice != null && newPrice.isNotEmpty) {
         currentToy.toyName = newPrice;
 
         // 同时更新原始列表中对应的数据，确保下次打开弹出层时数据一致
-        if (widget.toyList != null && widget.toyIndex != null && widget.toyIndex! < widget.toyList!.length) {
+        if (widget.toyList != null &&
+            widget.toyIndex != null &&
+            widget.toyIndex! < widget.toyList!.length) {
           widget.toyList![widget.toyIndex!].toyName = newPrice;
           debugPrint('📝 同时更新列表中索引${widget.toyIndex}的数据: toyName=$newPrice');
         }
@@ -208,12 +214,14 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
         wasUpdated = true;
         debugPrint('📝 宝贝名称更新: ${currentToy.toyName}');
       }
-    } else if(tag == 'price'){
+    } else if (tag == 'price') {
       if (newPrice != null && newPrice != 0) {
         currentToy.price = newPrice;
 
         // 同时更新原始列表中对应的数据
-        if (widget.toyList != null && widget.toyIndex != null && widget.toyIndex! < widget.toyList!.length) {
+        if (widget.toyList != null &&
+            widget.toyIndex != null &&
+            widget.toyIndex! < widget.toyList!.length) {
           widget.toyList![widget.toyIndex!].price = newPrice;
           debugPrint('💲 同时更新列表中索引${widget.toyIndex}的数据: price=$newPrice');
         }
@@ -224,16 +232,19 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
           });
         }
         wasUpdated = true;
-        debugPrint('💲 购买价格更新: ${currentToy.price}');
+        debugPrint('💲 入手价格更新: ${currentToy.price}');
       }
-    } else if(tag == 'description'){
+    } else if (tag == 'description') {
       if (newPrice != null) {
         currentToy.description = newPrice;
 
         // 同时更新原始列表中对应的数据，确保下次打开弹出层时数据一致
-        if (widget.toyList != null && widget.toyIndex != null && widget.toyIndex! < widget.toyList!.length) {
+        if (widget.toyList != null &&
+            widget.toyIndex != null &&
+            widget.toyIndex! < widget.toyList!.length) {
           widget.toyList![widget.toyIndex!].description = newPrice;
-          debugPrint('📄 同时更新列表中索引${widget.toyIndex}的数据: description=$newPrice');
+          debugPrint(
+              '📄 同时更新列表中索引${widget.toyIndex}的数据: description=$newPrice');
         }
 
         if (mounted) {
@@ -244,156 +255,103 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
         wasUpdated = true;
         debugPrint('📄 描述更新: ${currentToy.description}');
       }
-    } else if(tag == 'labels'){
+    } else if (tag == 'labels') {
       if (newPrice != null && newPrice.isNotEmpty) {
         currentToy.labels = newPrice;
-
-        // 同时更新原始列表中对应的数据
-        if (widget.toyList != null && widget.toyIndex != null && widget.toyIndex! < widget.toyList!.length) {
+        if (widget.toyList != null &&
+            widget.toyIndex != null &&
+            widget.toyIndex! < widget.toyList!.length) {
           widget.toyList![widget.toyIndex!].labels = newPrice;
-          debugPrint('🏷️ 同时更新列表中索引${widget.toyIndex}的数据: labels=$newPrice');
         }
-
         if (mounted) {
-          setState(() {
-            // 触发重建
-          });
+          setState(() {});
         }
         wasUpdated = true;
-        debugPrint('🏷️ 标签更新: ${currentToy.labels}');
       }
     }
 
-    // 如果数据被更新，记录更新信息（列表不可直接修改，依赖保存后的刷新机制）
+    // 如果数据被更新，记录更新信息并自动持久化
     if (wasUpdated) {
-      debugPrint('✅ 字段更新完成: ${currentToy.toyName} - $tag=${tag == "sellPrice" ? currentToy.sellPrice : tag == "price" ? currentToy.price : tag == "toyName" ? currentToy.toyName : currentToy.description}');
-      debugPrint('📝 注意: 列表数据将在保存后通过刷新机制同步');
+      debugPrint(
+          '✅ 字段更新完成: ${currentToy.toyName} - $tag=${tag == "price" ? currentToy.price : tag == "toyName" ? currentToy.toyName : currentToy.description}');
+      _autoSave();
     }
   }
 
-  // 智能查找本地图片，支持多种路径
-  Future<File?> _findLocalImage(String localUrl, String imageUrl) async {
+  Future<void> _pickPurchaseDate(BuildContext context) async {
+    DateTime initialDate = DateTime.now();
     try {
-      // 1. 直接使用提供的本地路径
-      if (localUrl.isNotEmpty) {
-        final directFile = File(localUrl);
-        if (await directFile.exists()) {
-          debugPrint("✅ 找到直接本地图片: $localUrl");
-          return directFile;
-        }
+      if (currentToy.createAt != null && currentToy.createAt.isNotEmpty) {
+        initialDate = DateTime.parse(currentToy.createAt);
+      }
+    } catch (_) {}
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked != null) {
+      final dateStr = DateFormat('yyyy-MM-dd').format(picked);
+      currentToy.createAt = dateStr;
+
+      // 同时更新原始列表中对应的数据
+      if (widget.toyList != null &&
+          widget.toyIndex != null &&
+          widget.toyIndex! < widget.toyList!.length) {
+        widget.toyList![widget.toyIndex!].createAt = dateStr;
       }
 
-      // 2. 尝试从网络URL提取文件名，在应用目录中查找
-      if (imageUrl.isNotEmpty) {
-        final uri = Uri.tryParse(imageUrl);
-        if (uri != null) {
-          final fileName = uri.pathSegments.isNotEmpty
-              ? uri.pathSegments.last
-              : 'image_${imageUrl.hashCode}.jpg';
-
-          // 检查应用文档目录
-          final appDir = await getApplicationDocumentsDirectory();
-          final appFile = File('${appDir.path}/$fileName');
-          if (await appFile.exists()) {
-            debugPrint("✅ 找到应用目录图片: ${appFile.path}");
-            return appFile;
-          }
-
-          // 检查应用支持目录
-          final supportDir = await getApplicationSupportDirectory();
-          final supportFile = File('${supportDir.path}/$fileName');
-          if (await supportFile.exists()) {
-            debugPrint("✅ 找到支持目录图片: ${supportFile.path}");
-            return supportFile;
-          }
-
-          // 检查临时目录（可能之前下载过）
-          final tempDir = await getTemporaryDirectory();
-          final tempFile = File('${tempDir.path}/$fileName');
-          if (await tempFile.exists()) {
-            debugPrint("✅ 找到临时目录图片: ${tempFile.path}");
-            return tempFile;
-          }
-        }
+      if (mounted) {
+        setState(() {});
       }
-
-      // 3. 如果localUrl看起来像相对路径，尝试拼接到应用目录
-      if (localUrl.isNotEmpty && !localUrl.startsWith('/')) {
-        final appDir = await getApplicationDocumentsDirectory();
-        final relativeFile = File('${appDir.path}/$localUrl');
-        if (await relativeFile.exists()) {
-          debugPrint("✅ 找到相对路径图片: ${relativeFile.path}");
-          return relativeFile;
-        }
-      }
-
-      debugPrint("❌ 未找到任何本地图片");
-      return null;
-    } catch (e) {
-      debugPrint("❌ 查找本地图片时出错: $e");
-      return null;
+      _autoSave();
     }
   }
 
-  Future<void> toXianyu(
-    String imageUrl,
-    String localUrl,
-    Function(bool) setLoading,
-  ) async {
-    final dio = Dio();
-    File? file;
-    bool isTemporaryFile = false; // 标记是否为临时下载的文件
-
+  // 【单机模式】自动保存玩具修改到本地
+  Future<void> _autoSave() async {
     try {
-      setLoading(true);
-
-      // 优先使用本地图片，支持多种路径检查
-      file = await _findLocalImage(localUrl, imageUrl);
-
-      if (file == null || !await file.exists()) {
-        debugPrint("🌐 本地图片不可用，从网络下载: $imageUrl");
-        final response = await dio.get<List<int>>(
-          imageUrl,
-          options: Options(
-            responseType: ResponseType.bytes,
-            receiveTimeout: const Duration(milliseconds: 30000),
-            sendTimeout: const Duration(milliseconds: 10000),
-          ),
-        );
-
-        final tempDir = await getTemporaryDirectory();
-        file = File('${tempDir.path}/xianyu_share_${DateTime.now().millisecondsSinceEpoch}.jpg');
-        await file.writeAsBytes(response.data!);
-        isTemporaryFile = true; // 标记为临时文件
-        debugPrint("📥 网络图片已下载到临时文件: ${file.path}");
-      } else {
-        debugPrint("📱 使用本地图片: ${file.path}");
+      dynamic currentUser;
+      try {
+        currentUser = StateManager.readUserState(context).currentUser;
+      } catch (_) {
+        currentUser =
+            currentToy.owner ?? OwnerModel(uid: 'local_user', name: '玩具收藏家');
       }
-
-      // 分享图片
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: '看看这个东西值多少钱',
-        subject: '闲鱼估价分享',
-      );
-      debugPrint("✅ 图片分享成功");
-
+      currentToy.owner = currentUser;
+      await TreasureDao.modifyToy(currentToy.toJson());
+      debugPrint('💾 自动保存成功: ${currentToy.toyName}');
+      await widget.getMore(0);
     } catch (e) {
-      debugPrint("❌ 分享失败: $e");
-      // 可以在这里添加用户友好的错误提示
-    } finally {
-      setLoading(false);
-
-      // 只删除临时下载的文件，保留本地存储的图片
-      if (isTemporaryFile && file != null && await file.exists()) {
-        try {
-          await file.delete();
-          debugPrint('🗑️ 临时下载图片已删除: ${file.path}');
-        } catch (e) {
-          debugPrint('⚠️ 删除临时图片失败: $e');
-        }
-      }
+      debugPrint('⚠️ 自动保存失败: $e');
     }
+  }
+
+  /*
+  // 【单机模式】已移除闲鱼二手价分享
+  Future<File?> _findLocalImage(String localUrl, String imageUrl) async { ... }
+  Future<void> toXianyu(...) async { ... }
+  */
+
+  Future<void> _handleStatusChanged(bool newValue) async {
+    InteractiveFeedback.hapticFeedback();
+    currentToy.isSelled = newValue;
+
+    // 同时更新原始列表中对应的数据
+    if (widget.toyList != null &&
+        widget.toyIndex != null &&
+        widget.toyIndex! < widget.toyList!.length) {
+      widget.toyList![widget.toyIndex!].isSelled = newValue;
+      debugPrint('🔄 同时更新列表中索引${widget.toyIndex}的数据: isSelled=$newValue');
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+    _autoSave();
   }
 
   @override
@@ -403,25 +361,31 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
     //   _refreshFromList();
     // });
 
-    // 使用本地状态变量而不是widget.toy
-    final aspectRatio = currentToy.picWidth / currentToy.picHeight;
- 
-    return IntrinsicHeight(
-      child: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
+    final double aspectRatio =
+        (currentToy.picWidth > 0 && currentToy.picHeight > 0)
+            ? (currentToy.picWidth / currentToy.picHeight)
+            : 1.0;
+
+    return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.45,
+              ),
+              child: AspectRatio(
                 aspectRatio: aspectRatio,
                 child: Container(
                   decoration: BoxDecoration(
                     color: CommonUtils.randomColor(),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child:Stack(
+                  child: Stack(
                     children: [
                       // 图片展示
                       Positioned.fill(
@@ -430,245 +394,214 @@ class _ToyDetailCardState extends State<ToyDetailCard> {
                           width: MediaQuery.of(context).size.width / 2,
                         ),
                       ),
-                      // 右上角开关
+                      // 右上角状态切换胶囊组件（在库 / 已出损坏）
                       Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Switch(
-                          value: currentToy.isSelled,
-                          onChanged: (bool newValue) async{
-                            if(currentToy.sellPrice == 0){
-                              setPrice(context, currentToy, setState, 'sellPrice');
-                            }
-                            currentToy.isSelled = newValue;
-
-                            // 同时更新原始列表中对应的数据
-                            if (widget.toyList != null && widget.toyIndex != null && widget.toyIndex! < widget.toyList!.length) {
-                              widget.toyList![widget.toyIndex!].isSelled = newValue;
-                              debugPrint('🔄 同时更新列表中索引${widget.toyIndex}的数据: isSelled=$newValue');
-                            }
-
-                            if (mounted) {
-                              setState(() {
-                                // 触发重建
-                              });
-                            }
-                          },
-                          activeColor: Colors.black, // 开启时滑块颜色
-                          inactiveThumbColor: Colors.grey, // 关闭时滑块颜色
-                          activeTrackColor: Colors.black26, // 开启时轨道颜色（可选）
-                          inactiveTrackColor: Colors.grey[300], // 关闭时轨道颜色（可选）
+                        top: 10,
+                        right: 10,
+                        child: GestureDetector(
+                          key: const Key('toy_status_badge'),
+                          onTap: () =>
+                              _handleStatusChanged(!currentToy.isSelled),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeInOut,
+                                padding: const EdgeInsets.only(
+                                  left: 10,
+                                  right: 4,
+                                  top: 3,
+                                  bottom: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: currentToy.isSelled
+                                      ? Colors.red.shade900.withOpacity(0.75)
+                                      : Colors.black.withOpacity(0.55),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: currentToy.isSelled
+                                        ? Colors.redAccent.withOpacity(0.6)
+                                        : Colors.white.withOpacity(0.25),
+                                    width: 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.18),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 7,
+                                      height: 7,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: currentToy.isSelled
+                                            ? Colors.redAccent
+                                            : Colors.greenAccent,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: currentToy.isSelled
+                                                ? Colors.redAccent
+                                                    .withOpacity(0.7)
+                                                : Colors.greenAccent
+                                                    .withOpacity(0.7),
+                                            blurRadius: 4,
+                                            spreadRadius: 1,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      currentToy.isSelled ? '已出 / 损坏' : '在库收藏',
+                                      style: TextStyle(
+                                        color: currentToy.isSelled
+                                            ? Colors.white
+                                            : Colors.white.withOpacity(0.95),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Transform.scale(
+                                      scale: 0.72,
+                                      child: Switch(
+                                        value: currentToy.isSelled,
+                                        onChanged: _handleStatusChanged,
+                                        activeColor: Colors.white,
+                                        activeTrackColor: Colors.redAccent,
+                                        inactiveThumbColor: Colors.white,
+                                        inactiveTrackColor: Colors.white30,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
-                  )
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => setPrice(context, currentToy, setState, 'toyName'),
-                    child: Text(
-                      '${currentToy.toyName}',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    )
-                  ) ,
+            ),
+            const SizedBox(height: 10),
+            // 宝贝名字与分类标签（蓝底白字）
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: () =>
+                          setPrice(context, currentToy, setState, 'toyName'),
+                      child: Text(
+                        '${currentToy.toyName}',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+                if (currentToy.labels != null &&
+                    currentToy.labels.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () => setPrice(context, currentToy, setState, 'labels'),
+                    onTap: () =>
+                        setPrice(context, currentToy, setState, 'labels'),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.blue,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        '${currentToy.labels}',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        currentToy.labels,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              (currentToy.description != null && currentToy.description.isNotEmpty)
-              ? GestureDetector(
-                  onTap: () => setPrice(context, currentToy, setState, 'description'),
-                  child: Text(
-                    '${currentToy.description}',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  )
-                )
-              : GestureDetector(
-                  onTap: () => setPrice(context, currentToy, setState, 'description'),
-                  child: Text(
-                    '点击添加宝贝的描述',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  )
-                ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => setPrice(context, currentToy, setState, 'price'),
+              ],
+            ),
+            const SizedBox(height: 6),
+            (currentToy.description != null &&
+                    currentToy.description.isNotEmpty)
+                ? GestureDetector(
+                    onTap: () =>
+                        setPrice(context, currentToy, setState, 'description'),
                     child: Text(
-                      '购买价：¥${currentToy.price}',
-                      style: TextStyle(fontSize: 18, color: Colors.red[400], fontWeight: FontWeight.bold),
-                    )
-                  ),
-                  currentToy.sellPrice > 0
-                  ? GestureDetector(
-                      onTap: () => setPrice(context, currentToy, setState, 'sellPrice'),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '二手价：¥${currentToy.sellPrice}',
-                            style: TextStyle(fontSize: 18, color: Colors.green[400], fontWeight: FontWeight.bold),
-                          )
-                        ],
-                      ),
-                    )
-                  : GestureDetector(
-                      onTap: () => setPrice(context, currentToy, setState, 'sellPrice'),
-                      child: const Text('设置卖出价格'),
-                    ),
-                ],
+                      '${currentToy.description}',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ))
+                : GestureDetector(
+                    onTap: () =>
+                        setPrice(context, currentToy, setState, 'description'),
+                    child: Text(
+                      '点击添加宝贝的描述',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                    )),
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () => setPrice(context, currentToy, setState, 'price'),
+              child: Text(
+                '入手价：¥${currentToy.price}',
+                style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.red[400],
+                    fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 16),
-              Text(
-                '购买日期：${DateFormat('yy-MM-dd').format(DateTime.parse(currentToy.createAt))}',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: isSharing
-                      ? null
-                      : () async {
-                          if (mounted) {
-                            setState(() => isSharing = true);
-                          }
-                          await toXianyu(
-                            currentToy.toyPicUrl,
-                            currentToy.localUrl,
-                            (loading) {
-                              if (mounted) {
-                                setState(() => isSharing = loading);
-                              }
-                            },
-                          );
-                        },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (isSharing)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Theme.of(context).textTheme.labelLarge?.color,
-                                ),
-                              ),
-                            ),
-                          const Text('闲鱼二手价'),
-                        ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: () => _pickPurchaseDate(context),
+                      child: Text(
+                        '入手日期：${ToyDetailCard.formatPurchaseDate(currentToy.createAt)}',
+                        style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: () async {
-                        // 获取当前登录用户
-                        final currentUser = StateManager.readUserState(context).currentUser;
-                        debugPrint('💾 保存玩具: 设置owner为当前用户 ${currentUser.uid}');
-
-                        // 设置owner为当前登录用户
-                        currentToy.owner = currentUser;
-
-                        final response = await TreasureDao.modifyToy(currentToy.toJson());
-                        if (!context.mounted) return;
-
-                        if (response != null) {
-                          debugPrint('✅ 保存成功，开始数据同步...');
-
-                          // 1. 立即更新弹出层显示的currentToy数据
-                          if (mounted) {
-                            setState(() {
-                              debugPrint('📝 保存后立即刷新弹出层显示数据');
-                              debugPrint('🔄 弹出层currentToy: ${currentToy.toyName} - sellPrice: ${currentToy.sellPrice}');
-                            });
-                          }
-
-                          // 2. 显示成功提示
-                          if (!context.mounted) return;
-                          CommonUtils.showSnackBar(context, '保存成功');
-
-                          // 3. 立即触发回调，然后异步刷新数据
-                          // 立即刷新当前显示，不依赖外部列表或回调
-                          if (mounted) {
-                            setState(() {
-                              debugPrint('🔄 立即刷新弹出层显示的currentToy数据');
-                              // currentToy已经在上面被更新了，这里只是触发重建
-                            });
-                          }
-
-                          // 保存成功后，强制清除缓存并刷新数据和统计信息
-                          Future.delayed(const Duration(milliseconds: 200), () async {
-                            try {
-                              debugPrint('🔄 保存成功，开始强制清除缓存并刷新数据...');
-
-                              // 强制清除可能的缓存
-                              await _clearAllCaches();
-
-                              await widget.getMore(0);
-                              debugPrint('✅ 数据刷新完成');
-                            } catch (e) {
-                              debugPrint('⚠️ 数据刷新失败: $e');
-                            }
-
-                            // 延时关闭弹出层，让用户看到更新后的数据
-                            Future.delayed(const Duration(milliseconds: 400), () {
-                              if (context.mounted) {
-                                debugPrint('🔄 保存成功，关闭弹出层');
-                                Navigator.of(context).pop(); // 关闭弹出层
-                              }
-                            });
-                          });
-
-                          debugPrint('✅ 保存完成 - 弹出层将自动关闭，数据已同步');
-                        } else {
-                          if (!context.mounted) return;
-                          CommonUtils.show(context, '保存失败');
-                        }
-                      },
-                      child: const Text('保存'),
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '已入手${ToyDetailCard.calculateHoldingDays(currentToy.createAt)}天',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

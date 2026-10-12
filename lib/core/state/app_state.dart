@@ -28,11 +28,11 @@ abstract class AppState<T> extends ChangeNotifier {
   @protected
   void updateState(T newState, {bool shouldNotify = true}) {
     if (_isDisposed) return;
-    
+
     if (_state != newState) {
       _state = newState;
       _error = null; // 清除之前的错误
-      
+
       if (shouldNotify) {
         notifyListeners();
       }
@@ -43,10 +43,10 @@ abstract class AppState<T> extends ChangeNotifier {
   @protected
   void setLoading(bool loading, {bool shouldNotify = true}) {
     if (_isDisposed) return;
-    
+
     if (_isLoading != loading) {
       _isLoading = loading;
-      
+
       if (shouldNotify) {
         notifyListeners();
       }
@@ -57,11 +57,11 @@ abstract class AppState<T> extends ChangeNotifier {
   @protected
   void setError(String? error, {bool shouldNotify = true}) {
     if (_isDisposed) return;
-    
+
     if (_error != error) {
       _error = error;
       _isLoading = false; // 出错时停止加载状态
-      
+
       if (shouldNotify) {
         notifyListeners();
       }
@@ -77,7 +77,7 @@ abstract class AppState<T> extends ChangeNotifier {
   @protected
   void batchUpdate(VoidCallback updates) {
     if (_isDisposed) return;
-    
+
     updates();
     notifyListeners();
   }
@@ -90,35 +90,35 @@ abstract class AppState<T> extends ChangeNotifier {
     String? errorPrefix,
   }) async {
     if (_isDisposed) return null;
-    
+
     try {
       if (setLoadingState) setLoading(true);
-      
+
       final result = await operation();
-      
+
       if (setLoadingState) setLoading(false);
       clearError();
-      
+
       return result;
     } catch (e, stackTrace) {
-      final errorMessage = errorPrefix != null 
-          ? '$errorPrefix: ${e.toString()}'
-          : e.toString();
-      
+      final errorMessage =
+          errorPrefix != null ? '$errorPrefix: ${e.toString()}' : e.toString();
+
       setError(errorMessage);
-      
+
       // 开发模式下打印详细错误信息
       if (kDebugMode) {
         debugPrint('🔴 AsyncOperation Error: $errorMessage');
         debugPrint('📍 StackTrace: $stackTrace');
       }
-      
+
       return null;
     }
   }
 
   @override
   void dispose() {
+    if (_isDisposed) return;
     _isDisposed = true;
     super.dispose();
   }

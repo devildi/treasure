@@ -5,7 +5,7 @@ class SkeletonLoading extends StatefulWidget {
   final double height;
   final BorderRadius? borderRadius;
   final Duration duration;
-  
+
   const SkeletonLoading({
     Key? key,
     required this.width,
@@ -75,7 +75,7 @@ class _SkeletonLoadingState extends State<SkeletonLoading>
 
 class ToyCardSkeleton extends StatelessWidget {
   final double cardWidth;
-  
+
   const ToyCardSkeleton({
     Key? key,
     this.cardWidth = 160,

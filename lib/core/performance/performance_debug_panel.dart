@@ -8,7 +8,7 @@ import 'memory_optimizer.dart';
 /// 性能调试面板
 class PerformanceDebugPanel extends StatefulWidget {
   const PerformanceDebugPanel({Key? key}) : super(key: key);
-  
+
   @override
   State<PerformanceDebugPanel> createState() => _PerformanceDebugPanelState();
 }
@@ -17,11 +17,11 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
     with TickerProviderStateMixin {
   late TabController _tabController;
   Timer? _refreshTimer;
-  
+
   PerformanceReport? _performanceReport;
   MemoryUsageStats? _memoryStats;
   List<PerformanceWidgetMetrics>? _widgetMetrics;
-  
+
   @override
   void initState() {
     super.initState();
@@ -29,14 +29,14 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
     _startRefreshTimer();
     _refreshData();
   }
-  
+
   @override
   void dispose() {
     _tabController.dispose();
     _refreshTimer?.cancel();
     super.dispose();
   }
-  
+
   void _startRefreshTimer() {
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (mounted) {
@@ -44,15 +44,16 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       }
     });
   }
-  
+
   void _refreshData() {
     setState(() {
       _performanceReport = PerformanceManager.instance.getPerformanceReport();
       _memoryStats = MemoryOptimizer.instance.getMemoryStats();
-      _widgetMetrics = WidgetPerformanceOptimizer.instance.getPerformanceReport();
+      _widgetMetrics =
+          WidgetPerformanceOptimizer.instance.getPerformanceReport();
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,12 +92,12 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildPerformanceOverview() {
     if (_performanceReport == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -115,7 +116,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildMemoryMonitor() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -137,7 +138,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildWidgetPerformance() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -157,7 +158,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildDiagnosticTools() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -173,7 +174,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildInfoCard(String title, String content, Color color) {
     return Card(
       elevation: 4,
@@ -194,9 +195,9 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
             Text(
               title,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -211,7 +212,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildMetricsChart() {
     if (_performanceReport?.metrics.isEmpty ?? true) {
       return const Card(
@@ -221,7 +222,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
         ),
       );
     }
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -245,7 +246,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildMemoryChart() {
     if (_performanceReport?.memorySnapshots.isEmpty ?? true) {
       return const Card(
@@ -255,7 +256,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
         ),
       );
     }
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -270,7 +271,8 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
             SizedBox(
               height: 200,
               child: CustomPaint(
-                painter: MemoryChartPainter(_performanceReport!.memorySnapshots),
+                painter:
+                    MemoryChartPainter(_performanceReport!.memorySnapshots),
                 size: Size.infinite,
               ),
             ),
@@ -279,10 +281,10 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildSlowOperations() {
     final slowOps = _performanceReport?.slowOperations ?? {};
-    
+
     if (slowOps.isEmpty) {
       return const Card(
         child: Padding(
@@ -291,7 +293,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
         ),
       );
     }
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -304,7 +306,9 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
             ),
             const SizedBox(height: 8),
             ...slowOps.entries.map((entry) {
-              final avgTime = entry.value.map((m) => m.value).reduce((a, b) => a + b) / entry.value.length;
+              final avgTime =
+                  entry.value.map((m) => m.value).reduce((a, b) => a + b) /
+                      entry.value.length;
               return ListTile(
                 leading: const Icon(Icons.warning, color: Colors.orange),
                 title: Text(entry.key),
@@ -317,7 +321,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildWidgetMetricsList() {
     if (_widgetMetrics?.isEmpty ?? true) {
       return const Card(
@@ -327,9 +331,9 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
         ),
       );
     }
-    
+
     final topWidgets = _widgetMetrics!.take(10).toList();
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -360,10 +364,11 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildExpensiveWidgets() {
-    final expensiveWidgets = WidgetPerformanceOptimizer.instance.getExpensiveWidgets();
-    
+    final expensiveWidgets =
+        WidgetPerformanceOptimizer.instance.getExpensiveWidgets();
+
     if (expensiveWidgets.isEmpty) {
       return const Card(
         child: Padding(
@@ -372,7 +377,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
         ),
       );
     }
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -397,7 +402,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildMemoryActions() {
     return Card(
       child: Padding(
@@ -440,7 +445,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildDiagnosticActions() {
     return Card(
       child: Padding(
@@ -479,7 +484,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildMemoryLeakDetection() {
     return Card(
       child: Padding(
@@ -493,7 +498,8 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
             ),
             const SizedBox(height: 8),
             FutureBuilder<List<String>>(
-              future: Future.value(PerformanceManager.instance.detectPotentialMemoryLeaks()),
+              future: Future.value(
+                  PerformanceManager.instance.detectPotentialMemoryLeaks()),
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
                   final issues = snapshot.data!;
@@ -503,7 +509,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
                       title: Text('未检测到内存泄漏'),
                     );
                   }
-                  
+
                   return Column(
                     children: issues.map((issue) {
                       return ListTile(
@@ -513,7 +519,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
                     }).toList(),
                   );
                 }
-                
+
                 return const CircularProgressIndicator();
               },
             ),
@@ -522,7 +528,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   Widget _buildPerformanceSettings() {
     return Card(
       child: Padding(
@@ -564,7 +570,7 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       ),
     );
   }
-  
+
   void _clearAllData() {
     PerformanceManager.instance.clearHistory();
     WidgetPerformanceOptimizer.instance.clearMetrics();
@@ -572,22 +578,22 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
     _refreshData();
     _showSnackBar('已清理所有性能数据');
   }
-  
+
   void _exportPerformanceReport() {
     final report = PerformanceManager.instance.getPerformanceReport();
     final summary = report.generateSummary();
-    
+
     if (kDebugMode) {
       debugPrint('=== 性能报告 ===');
       debugPrint(summary);
     }
-    
+
     _showSnackBar('性能报告已导出到调试控制台');
   }
-  
+
   void _detectMemoryLeaks() {
     final issues = PerformanceManager.instance.detectPotentialMemoryLeaks();
-    
+
     if (issues.isEmpty) {
       _showSnackBar('未检测到内存泄漏');
     } else {
@@ -597,12 +603,12 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
           title: const Text('内存泄漏检测结果'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
-            children: issues.map((issue) => 
-              ListTile(
-                leading: const Icon(Icons.warning, color: Colors.red),
-                title: Text(issue),
-              )
-            ).toList(),
+            children: issues
+                .map((issue) => ListTile(
+                      leading: const Icon(Icons.warning, color: Colors.red),
+                      title: Text(issue),
+                    ))
+                .toList(),
           ),
           actions: [
             TextButton(
@@ -614,12 +620,12 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
       );
     }
   }
-  
+
   void _showPerformanceTimeline() {
     // 显示性能时间线的实现
     _showSnackBar('性能时间线功能开发中');
   }
-  
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -630,39 +636,42 @@ class _PerformanceDebugPanelState extends State<PerformanceDebugPanel>
 /// 性能指标图表绘制器
 class MetricsChartPainter extends CustomPainter {
   final List<PerformanceMetric> metrics;
-  
+
   MetricsChartPainter(this.metrics);
-  
+
   @override
   void paint(Canvas canvas, Size size) {
     if (metrics.isEmpty) return;
-    
+
     final paint = Paint()
       ..color = Colors.blue
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
-    
+
     final path = Path();
-    
+
     // 简化的图表绘制逻辑
-    final maxValue = metrics.map((m) => m.value).reduce((a, b) => a > b ? a : b);
-    final minValue = metrics.map((m) => m.value).reduce((a, b) => a < b ? a : b);
+    final maxValue =
+        metrics.map((m) => m.value).reduce((a, b) => a > b ? a : b);
+    final minValue =
+        metrics.map((m) => m.value).reduce((a, b) => a < b ? a : b);
     final range = maxValue - minValue;
-    
+
     for (int i = 0; i < metrics.length; i++) {
       final x = (i / (metrics.length - 1)) * size.width;
-      final y = size.height - ((metrics[i].value - minValue) / range) * size.height;
-      
+      final y =
+          size.height - ((metrics[i].value - minValue) / range) * size.height;
+
       if (i == 0) {
         path.moveTo(x, y);
       } else {
         path.lineTo(x, y);
       }
     }
-    
+
     canvas.drawPath(path, paint);
   }
-  
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
@@ -670,34 +679,34 @@ class MetricsChartPainter extends CustomPainter {
 /// 内存图表绘制器
 class MemoryChartPainter extends CustomPainter {
   final List<MemorySnapshot> snapshots;
-  
+
   MemoryChartPainter(this.snapshots);
-  
+
   @override
   void paint(Canvas canvas, Size size) {
     if (snapshots.isEmpty) return;
-    
+
     final paint = Paint()
       ..color = Colors.green
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
-    
+
     final path = Path();
-    
+
     for (int i = 0; i < snapshots.length; i++) {
       final x = (i / (snapshots.length - 1)) * size.width;
       final y = size.height - (snapshots[i].memoryUsageRatio * size.height);
-      
+
       if (i == 0) {
         path.moveTo(x, y);
       } else {
         path.lineTo(x, y);
       }
     }
-    
+
     canvas.drawPath(path, paint);
   }
-  
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

@@ -21,11 +21,11 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
 
   Future<void> _loadStorageInfo() async {
     setState(() => _loading = true);
-    
+
     try {
       final stats = await StorageService.instance.getStorageStats();
       final offlineStatus = await StorageService.instance.getOfflineStatus();
-      
+
       setState(() {
         _stats = stats;
         _offlineStatus = offlineStatus;
@@ -42,9 +42,9 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(allCache ? '清空所有缓存' : '清理缓存'),
-        content: Text(allCache 
-          ? '这将清空所有缓存数据，包括图片缓存、API缓存等。确定继续吗？'
-          : '这将清理过期和不常用的缓存数据。确定继续吗？'),
+        content: Text(allCache
+            ? '这将清空所有缓存数据，包括图片缓存、API缓存等。确定继续吗？'
+            : '这将清理过期和不常用的缓存数据。确定继续吗？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -53,14 +53,14 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              
+
               try {
                 if (allCache) {
                   await StorageService.instance.clearCache(allCache: true);
                 } else {
                   await StorageService.instance.cleanupStorage();
                 }
-                
+
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('缓存清理完成')),
@@ -96,10 +96,10 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              
+
               try {
                 await StorageService.instance.clearCache(allCache: true);
-                
+
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('离线数据已清空')),
@@ -131,22 +131,22 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
         elevation: 1,
       ),
       body: _loading
-        ? const Center(child: CircularProgressIndicator())
-        : RefreshIndicator(
-            onRefresh: _loadStorageInfo,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildStorageOverview(),
-                const SizedBox(height: 16),
-                _buildOfflineDataSection(),
-                const SizedBox(height: 16),
-                _buildCacheManagement(),
-                const SizedBox(height: 16),
-                _buildStorageSettings(),
-              ],
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadStorageInfo,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _buildStorageOverview(),
+                  const SizedBox(height: 16),
+                  _buildOfflineDataSection(),
+                  const SizedBox(height: 16),
+                  _buildCacheManagement(),
+                  const SizedBox(height: 16),
+                  _buildStorageSettings(),
+                ],
+              ),
             ),
-          ),
     );
   }
 
@@ -167,22 +167,23 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // 存储使用量进度条
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('存储使用量: ${_stats!.formattedTotalSize} / ${_stats!.formattedMaxSize}'),
+                Text(
+                    '存储使用量: ${_stats!.formattedTotalSize} / ${_stats!.formattedMaxSize}'),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: _stats!.usage.clamp(0.0, 1.0),
                   backgroundColor: Colors.grey[300],
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    _stats!.isCriticalSpace 
-                      ? Colors.red
-                      : _stats!.isLowSpace 
-                        ? Colors.orange
-                        : Colors.green,
+                    _stats!.isCriticalSpace
+                        ? Colors.red
+                        : _stats!.isLowSpace
+                            ? Colors.orange
+                            : Colors.green,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -190,14 +191,15 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
                   _stats!.usageText,
                   style: TextStyle(
                     fontSize: 12,
-                    color: _stats!.isCriticalSpace ? Colors.red : Colors.grey[600],
+                    color:
+                        _stats!.isCriticalSpace ? Colors.red : Colors.grey[600],
                   ),
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 详细信息
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -253,7 +255,6 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(
@@ -312,7 +313,6 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.cleaning_services),
@@ -323,9 +323,7 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
                 child: const Text('清理'),
               ),
             ),
-            
             const Divider(),
-            
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.delete_sweep),
@@ -361,36 +359,41 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('自动缓存图片'),
               subtitle: const Text('在WiFi环境下自动缓存图片'),
-              value: StorageService.instance.getSetting('auto_cache_images', defaultValue: true) ?? true,
+              value: StorageService.instance
+                      .getSetting('auto_cache_images', defaultValue: true) ??
+                  true,
               onChanged: (value) {
                 StorageService.instance.saveSetting('auto_cache_images', value);
                 setState(() {});
               },
             ),
-            
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('自动清理过期缓存'),
               subtitle: const Text('应用启动时自动清理过期的缓存数据'),
-              value: StorageService.instance.getSetting('auto_cleanup_cache', defaultValue: true) ?? true,
+              value: StorageService.instance
+                      .getSetting('auto_cleanup_cache', defaultValue: true) ??
+                  true,
               onChanged: (value) {
-                StorageService.instance.saveSetting('auto_cleanup_cache', value);
+                StorageService.instance
+                    .saveSetting('auto_cleanup_cache', value);
                 setState(() {});
               },
             ),
-            
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('离线模式'),
               subtitle: const Text('网络不可用时使用离线数据'),
-              value: StorageService.instance.getSetting('offline_mode_enabled', defaultValue: true) ?? true,
+              value: StorageService.instance
+                      .getSetting('offline_mode_enabled', defaultValue: true) ??
+                  true,
               onChanged: (value) {
-                StorageService.instance.saveSetting('offline_mode_enabled', value);
+                StorageService.instance
+                    .saveSetting('offline_mode_enabled', value);
                 setState(() {});
               },
             ),
@@ -403,7 +406,7 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    
+
     if (difference.inMinutes < 1) {
       return '刚刚';
     } else if (difference.inMinutes < 60) {

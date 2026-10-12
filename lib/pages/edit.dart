@@ -7,8 +7,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:qiniu_flutter_sdk/qiniu_flutter_sdk.dart';
 import 'package:treasure/toy_model.dart';
 import 'package:treasure/dao.dart';
+import 'package:intl/intl.dart';
 import 'package:treasure/pages/toy.dart';
-import 'package:treasure/pages/batch_upload_page.dart';
+// import 'package:treasure/pages/batch_upload_page.dart';
 
 class EditMicro extends StatefulWidget {
   final OwnerModel user;
@@ -17,7 +18,7 @@ class EditMicro extends StatefulWidget {
     required this.user,
     required this.initData,
     Key? key,
-  }): super(key: key);
+  }) : super(key: key);
   @override
   EditMicroState createState() => EditMicroState();
 
@@ -43,7 +44,8 @@ class EditMicro extends StatefulWidget {
   }
 }
 
-class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin{
+class EditMicroState extends State<EditMicro>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
   final storage = Storage();
@@ -51,21 +53,24 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
   final TextEditingController _controller1 = TextEditingController();
   final TextEditingController _controller2 = TextEditingController();
   final TextEditingController _controller3 = TextEditingController();
+  DateTime _selectedDate = DateTime.now();
   List<String> chipLabels = [
-    '泡泡玛特', '盲盒', '手办', 
-    '三丽鸥', 'JellyCat', '乐高',
-    '游戏机', '游戏', '周边', '迪士尼', '环球影城', '其他'
+    '电子产品',
+    '玩具',
+    '其他',
   ];
+  int _selectedChipIndex = -1;
   List medias = [];
-  List<Future>tasks = [];
+  List<Future> tasks = [];
   String toyName = '';
   num price = 0;
   String description = '';
   bool uploading = false;
   bool isProcessingImages = false; // 新增：专门用于图片处理（压缩）的loading状态
   double progress = 0.0;
-  int _selectedChipIndex = -1;
-  bool isBatchMode = true;
+  // int _selectedChipIndex = -1;
+  // 【单机模式】已取消批量上传页跳转，直接使用单机发布容器
+  // bool isBatchMode = true;
 
   @override
   void dispose() {
@@ -75,7 +80,26 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
     _controller3.dispose();
   }
 
+  Future<void> _pickPurchaseDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: '选择购入日期',
+      cancelText: '取消',
+      confirmText: '确定',
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
   // 检查网络连接状态
+  // 【单机模式】已注释掉网络检查
+  /*
   Future<bool> _checkNetworkConnection() async {
     try {
       final result = await InternetAddress.lookup('baidu.com');
@@ -85,8 +109,9 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
       return false;
     }
   }
+  */
 
-  void upToServer(body) async{
+  void upToServer(body) async {
     // 检查 body 是否为空或包含空元素
     if (body == null || body.isEmpty) {
       if (mounted) {
@@ -119,18 +144,24 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
       }
     }
 
-    try{
+    try {
       dynamic res = await TreasureDao.poMicro({
         'toyName': toyName,
         'description': description,
         'toyPicUrl': body[0].key,
         'picWidth': body[0].width,
         'picHeight': body[0].height,
-        'labels': chipLabels[_selectedChipIndex],
+        'labels':
+            _selectedChipIndex >= 0 && _selectedChipIndex < chipLabels.length
+                ? chipLabels[_selectedChipIndex]
+                : '',
         'owner': widget.user.uid,
+        'ownerName': widget.user.name,
+        'ownerAvatar': widget.user.avatar,
         'price': price,
+        'createAt': _selectedDate.toIso8601String(),
       });
-      if(res != null){
+      if (res != null) {
         debugPrint('✅ Edit: 发布成功，开始执行刷新...');
         if (mounted) {
           // 1. 停止loading状态
@@ -149,7 +180,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
       } else {
         debugPrint('❌ Edit: 发布失败，res为null');
       }
-    }catch(err){
+    } catch (err) {
       debugPrint(err.toString());
       if (mounted) {
         setState(() {
@@ -160,7 +191,9 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
     }
   }
 
-  Future startUploadToQiniu(token, path, flag) async{
+  Future startUploadToQiniu(token, path, flag) async {
+    // 【单机模式】已注释掉七牛云网络上传
+    /*
     try {
       debugPrint('=== 开始七牛云上传 ===');
       debugPrint('Token: ${token?.substring(0, 50) ?? 'null'}...');
@@ -296,12 +329,14 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
       debugPrint('=== 错误处理完成 ===');
       return null;
     }
+    */
+    return null;
   }
 
   Future _add() async {
     try {
       final ImagePicker picker = ImagePicker();
-      
+
       // 显示选择对话框
       final source = await showDialog<ImageSource>(
         context: context,
@@ -329,12 +364,12 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
 
       List<XFile>? pickedFiles;
 
-      if (source == ImageSource.gallery && isBatchMode) {
-        // 批量模式且从相册选择
+      if (source == ImageSource.gallery) {
+        // 从相册选择（支持多选）
         setState(() {
           isProcessingImages = true;
         });
-        
+
         try {
           pickedFiles = await picker.pickMultiImage(
             maxWidth: 1000,
@@ -347,7 +382,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
           });
         }
       } else {
-        // 单张模式或拍照
+        // 拍照
         setState(() {
           isProcessingImages = true;
         });
@@ -359,39 +394,22 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
             maxHeight: 1000,
             imageQuality: 80,
           );
-           if (photo != null) {
+          if (photo != null) {
             pickedFiles = [photo];
           }
         } finally {
-           setState(() {
+          setState(() {
             isProcessingImages = false;
           });
         }
       }
 
       if (pickedFiles != null && pickedFiles.isNotEmpty) {
-        if (isBatchMode) {
-          final images = pickedFiles.map((file) => File(file.path)).toList();
-          if (mounted) {
-             Navigator.push(
-               context,
-               MaterialPageRoute(
-                 builder: (context) => BatchUploadPage(
-                   images: images,
-                   toyName: toyName,
-                   price: price,
-                   description: description,
-                   label: _selectedChipIndex != -1 ? chipLabels[_selectedChipIndex] : '',
-                   uid: widget.user.uid,
-                 ),
-               ),
-             );
-          }
-        } else {
-          setState(() {
-            medias = pickedFiles!.map((file) => File(file.path)).toList();
-          });
-        }
+        // 【单机模式】跳过上传环节，直接将选中的本地照片填充进图片容器中
+        final newImages = pickedFiles.map((file) => File(file.path)).toList();
+        setState(() {
+          medias = [...medias, ...newImages];
+        });
       }
     } catch (e) {
       if (!context.mounted) return;
@@ -400,34 +418,32 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
     }
   }
 
-  List listPics(){
+  List listPics() {
     List pics = [];
-    if(medias.isNotEmpty){
-      for(var i = 0; i < medias.length ; i++){
+    if (medias.isNotEmpty) {
+      for (var i = 0; i < medias.length; i++) {
         pics.add(picContainer(medias[i].path, i));
       }
     }
     return pics;
   }
 
-  void delete(index){
+  void delete(int index) {
     setState(() {
       medias.removeAt(index);
-      medias = medias;
     });
   }
 
-  Widget picContainer(path, index){
-    return 
-      Stack(
-        children: [
-          Container(
-            width: 150, 
+  Widget picContainer(path, index) {
+    return Stack(
+      children: [
+        Container(
+            width: 150,
             height: 150,
             margin: const EdgeInsets.fromLTRB(0, 0, 5, 0),
             clipBehavior: Clip.hardEdge,
             decoration: BoxDecoration(
-              borderRadius:const BorderRadius.all(Radius.circular(20)),
+              borderRadius: const BorderRadius.all(Radius.circular(20)),
               color: CommonUtils.randomColor(),
             ),
             child: Image.file(
@@ -435,28 +451,34 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
               width: 150,
               height: 150,
               fit: BoxFit.cover,
-            )
-          ),
-          Positioned(
-            top: 0,
-            right: 5,
-            child: IconButton(
+            )),
+        Positioned(
+          top: 0,
+          right: 5,
+          child: IconButton(
               onPressed: () => delete(index),
-              icon: const Icon(Icons.clear, color: Colors.white, size: 30,)
-            ),
-          )
-        ],
-      );
+              icon: const Icon(
+                Icons.clear,
+                color: Colors.white,
+                size: 30,
+              )),
+        )
+      ],
+    );
   }
 
-  void _submit()async{
-    if(medias.isEmpty || toyName == '' || price == 0 || _selectedChipIndex == -1){
+  void _submit() async {
+    if (medias.isEmpty ||
+        toyName == '' ||
+        price == 0 /* || _selectedChipIndex == -1 */) {
       CommonUtils.showSnackBar(context, '请填写完整信息！');
       return;
     }
     FocusScope.of(context).unfocus();
 
     try {
+      // 【单机模式】已注释掉网络检查与远端Token获取
+      /*
       // 首先检查网络连接
       debugPrint('检查网络连接...');
       final hasNetwork = await _checkNetworkConnection();
@@ -473,6 +495,7 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
       debugPrint('开始获取上传token...');
       String token = await TreasureDao.getToken('upload'); // 修改为正确的token类型
       debugPrint('Token获取成功: $token');
+      */
 
       setState(() {
         uploading = true;
@@ -491,6 +514,8 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
         return;
       }
 
+      // 【单机模式】已注释掉七牛云网络上传
+      /*
       debugPrint('开始上传图片: ${medias[0].path}');
       debugPrint('文件大小: ${await file.length()} bytes');
 
@@ -515,9 +540,34 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
         }
         return;
       }
+      */
 
-      debugPrint('上传成功，开始提交到服务器...');
-      upToServer(body);
+      // 【单机模式】在本地获取图片宽高并构建 ReturnBody
+      List<ReturnBody> localBodies = [];
+      for (var img in medias) {
+        final f = File(img.path);
+        double localWidth = 300.0;
+        double localHeight = 300.0;
+        if (await f.exists()) {
+          try {
+            var bytes = await f.readAsBytes();
+            var codec = await ui.instantiateImageCodec(bytes);
+            var frameInfo = await codec.getNextFrame();
+            localWidth = frameInfo.image.width.toDouble();
+            localHeight = frameInfo.image.height.toDouble();
+          } catch (e) {
+            debugPrint('⚠️ 本地计算宽高失败: $e');
+          }
+        }
+        localBodies.add(ReturnBody(
+          key: img.path,
+          width: localWidth,
+          height: localHeight,
+        ));
+      }
+
+      debugPrint('单机模式：图片数据已构建(${localBodies.length}张)，开始提交本地保存...');
+      upToServer(localBodies);
     } catch (e) {
       debugPrint('Submit error: $e');
       debugPrint('Error type: ${e.runtimeType}');
@@ -538,20 +588,20 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
     }
   }
 
-  void _nameChanged(String str){
-    setState((){
+  void _nameChanged(String str) {
+    setState(() {
       toyName = str;
     });
   }
 
-  void _priceChanged(String str){
-    setState((){
+  void _priceChanged(String str) {
+    setState(() {
       price = num.parse(str);
     });
   }
 
-  void _desChanged(String str){
-    setState((){
+  void _desChanged(String str) {
+    setState(() {
       description = str;
     });
   }
@@ -560,172 +610,252 @@ class EditMicroState extends State<EditMicro> with AutomaticKeepAliveClientMixin
   Widget build(BuildContext context) {
     super.build(context);
     final theme = Theme.of(context);
-  
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('发布宝贝'),
-        centerTitle:true,
-        leading: GestureDetector(child: const Icon(Icons.arrow_back_ios),onTap: (){Navigator.maybePop(context);},),
-        actions:<Widget>[
-          TextButton(
-            onPressed: _submit,
-            child: Text('发布', style: TextStyle(color: (medias.isEmpty || toyName == '' || price == 0  || _selectedChipIndex == -1 ?Colors.grey: Colors.black))),
-          )
-        ]
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            child: Container(
-              width: MediaQuery.of(context).size.width,
-              margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-              decoration: const BoxDecoration(
-                //color: Color.fromARGB(255, 218, 208, 208), 
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                SizedBox(
-                  height: 150,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
+        appBar: AppBar(
+            title: const Text('发布宝贝'),
+            centerTitle: true,
+            leading: GestureDetector(
+              child: const Icon(Icons.arrow_back_ios),
+              onTap: () {
+                Navigator.maybePop(context);
+              },
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: _submit,
+                child: Text('发布',
+                    style: TextStyle(
+                        color: (medias.isEmpty ||
+                                toyName == '' ||
+                                price == 0 /* || _selectedChipIndex == -1 */
+                            ? Colors.grey
+                            : Colors.black))),
+              )
+            ]),
+        body: Stack(
+          children: [
+            SingleChildScrollView(
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                decoration: const BoxDecoration(
+                    //color: Color.fromARGB(255, 218, 208, 208),
+                    ),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ...listPics(),
-                      Container(
-                        width: 150, 
+                      SizedBox(
                         height: 150,
-                        margin: const EdgeInsets.fromLTRB(0, 0, 5, 0),
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.all(Radius.circular(20)),
-                          color: Colors.orange[100],
-                        ),
-                        child: Center(
-                          child: IconButton(
-                            onPressed: _add,
-                            icon: const Icon(Icons.add_circle_outline, color: Colors.black, size: 30,),
-                            color: theme.colorScheme.onSecondary,
-                          )
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            ...listPics(),
+                            Container(
+                              width: 150,
+                              height: 150,
+                              margin: const EdgeInsets.fromLTRB(0, 0, 5, 0),
+                              decoration: BoxDecoration(
+                                borderRadius:
+                                    const BorderRadius.all(Radius.circular(20)),
+                                color: Colors.orange[100],
+                              ),
+                              child: Center(
+                                  child: IconButton(
+                                onPressed: _add,
+                                icon: const Icon(
+                                  Icons.add_circle_outline,
+                                  color: Colors.black,
+                                  size: 30,
+                                ),
+                                color: theme.colorScheme.onSecondary,
+                              )),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                TextField(
-                  onChanged: _nameChanged,
-                  controller: _controller1,
-                  decoration:const InputDecoration(
-                    hintText: '宝贝名字：',
-                    border:InputBorder.none
-                  )
-                ),
-                const Divider(),
-                TextField(
-                  onChanged: _priceChanged,
-                  controller: _controller2,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration:const InputDecoration(
-                    hintText: '购入价格：',
-                    border:InputBorder.none
-                  ),
-                ),
-                const Divider(),
-                TextField(
-                  onChanged: _desChanged,
-                  controller: _controller3,
-                  decoration:const InputDecoration(
-                    hintText: '填写对娃娃的描述：如系列等',
-                    border:InputBorder.none
-                  ),
-                ),
-                const Divider(),
-                Wrap(
-                  spacing: 8.0, // 芯片之间的间距
-                  children: List.generate(chipLabels.length, (index) {
-                    return ChoiceChip(
-                      label: Text(chipLabels[index]),
-                      selected: _selectedChipIndex == index,
-                      onSelected: (bool selected) async {
-                        if (chipLabels[index] == '其他' && selected) {
-                          // 显示输入对话框
-                          final String? newLabel = await showDialog<String>(
-                            context: context,
-                            builder: (BuildContext context) {
-                              String inputValue = '';
-                              return AlertDialog(
-                                title: const Text('添加新标签'),
-                                content: TextField(
-                                  autofocus: true,
-                                  decoration: const InputDecoration(
-                                    hintText: '请输入标签名称',
+                      TextField(
+                          onChanged: _nameChanged,
+                          controller: _controller1,
+                          decoration: const InputDecoration(
+                              hintText: '宝贝名字：', border: InputBorder.none)),
+                      const Divider(),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              onChanged: _priceChanged,
+                              controller: _controller2,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              decoration: const InputDecoration(
+                                  hintText: '购入价格：', border: InputBorder.none),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: _pickPurchaseDate,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 16,
+                                    color: Colors.black54,
                                   ),
-                                  onChanged: (value) {
-                                    inputValue = value;
-                                  },
-                                ),
-                                actions: <Widget>[
-                                  TextButton(
-                                    child: const Text('取消'),
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                  ),
-                                  TextButton(
-                                    child: const Text('确定'),
-                                    onPressed: () {
-                                      Navigator.of(context).pop(inputValue);
-                                    },
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    DateFormat('yyyy-MM-dd')
+                                        .format(_selectedDate),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black87,
+                                    ),
                                   ),
                                 ],
-                              );
-                            },
-                          );
-
-                          if (newLabel != null && newLabel.isNotEmpty) {
-                            setState(() {
-                              // 将新标签插入到"其他"之前
-                              chipLabels.insert(chipLabels.length - 1, newLabel);
-                              // 选中新插入的标签
-                              _selectedChipIndex = chipLabels.length - 2;
-                            });
-                          }
-                        } else {
-                          setState(() {
-                            _selectedChipIndex = selected ? index : -1;
-                          });
-                        }
-                      },
-                      selectedColor: Colors.blue[200],
-                      backgroundColor: Colors.grey[200],
-                      labelStyle: TextStyle(
-                        color: _selectedChipIndex == index ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  }),
-                ),
-              ]),
+                      const Divider(),
+                      TextField(
+                        onChanged: _desChanged,
+                        controller: _controller3,
+                        decoration: const InputDecoration(
+                            hintText: '填写对娃娃的描述：如系列等',
+                            border: InputBorder.none),
+                      ),
+                      const Divider(),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '分类标签',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8.0,
+                              runSpacing: 4.0,
+                              children:
+                                  List.generate(chipLabels.length, (index) {
+                                return ChoiceChip(
+                                  label: Text(chipLabels[index]),
+                                  selected: _selectedChipIndex == index,
+                                  selectedColor: Colors.black,
+                                  backgroundColor: Colors.grey[100],
+                                  checkmarkColor: Colors.white,
+                                  labelStyle: TextStyle(
+                                    color: _selectedChipIndex == index
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    fontWeight: _selectedChipIndex == index
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                  onSelected: (bool selected) async {
+                                    if (chipLabels[index] == '其他' && selected) {
+                                      // 显示输入对话框
+                                      final String? newLabel =
+                                          await showDialog<String>(
+                                        context: context,
+                                        builder: (BuildContext context) {
+                                          String inputValue = '';
+                                          return AlertDialog(
+                                            title: const Text('添加新标签'),
+                                            content: TextField(
+                                              autofocus: true,
+                                              decoration: const InputDecoration(
+                                                hintText: '请输入标签名称',
+                                              ),
+                                              onChanged: (value) {
+                                                inputValue = value;
+                                              },
+                                            ),
+                                            actions: <Widget>[
+                                              TextButton(
+                                                child: const Text('取消'),
+                                                onPressed: () {
+                                                  Navigator.of(context).pop();
+                                                },
+                                              ),
+                                              TextButton(
+                                                child: const Text('确定'),
+                                                onPressed: () {
+                                                  Navigator.of(context)
+                                                      .pop(inputValue);
+                                                },
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+
+                                      if (newLabel != null &&
+                                          newLabel.trim().isNotEmpty) {
+                                        setState(() {
+                                          // 将新标签插入到"其他"之前
+                                          chipLabels.insert(
+                                              chipLabels.length - 1,
+                                              newLabel.trim());
+                                          // 选中新插入的标签
+                                          _selectedChipIndex =
+                                              chipLabels.length - 2;
+                                        });
+                                      }
+                                    } else {
+                                      setState(() {
+                                        _selectedChipIndex =
+                                            selected ? index : -1;
+                                      });
+                                    }
+                                  },
+                                );
+                              }),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ]),
+              ),
             ),
-          ),
-          (uploading == true || isProcessingImages == true)
-          ?const Center(
-            child: CircularProgressIndicator(),
-          )
-          :Container(),
-          uploading == true
-          ?Center(
-            child: Text('${(progress * 100).round()}%', style: const TextStyle(color: Colors.grey),)
-          )
-          :Container(),
-          uploading == true
-          ?LinearProgressIndicator(
-            value: progress,
-            minHeight: 10,
-            backgroundColor: Colors.grey,
-            valueColor: const AlwaysStoppedAnimation(Colors.blue)
-          )
-          :Container(),
-        ],
-      )
-    );
+            (uploading == true || isProcessingImages == true)
+                ? const Center(
+                    child: CircularProgressIndicator(),
+                  )
+                : Container(),
+            uploading == true
+                ? Center(
+                    child: Text(
+                    '${(progress * 100).round()}%',
+                    style: const TextStyle(color: Colors.grey),
+                  ))
+                : Container(),
+            uploading == true
+                ? LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 10,
+                    backgroundColor: Colors.grey,
+                    valueColor: const AlwaysStoppedAnimation(Colors.blue))
+                : Container(),
+          ],
+        ));
   }
 }

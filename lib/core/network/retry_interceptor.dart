@@ -18,13 +18,14 @@ class RetryInterceptor extends Interceptor {
     final retries = extra['retries'] ?? 0;
 
     if (retries < maxRetries && _shouldRetry(err)) {
-      debugPrint('🔄 Retrying request (${retries + 1}/$maxRetries): ${err.requestOptions.path}');
-      
+      debugPrint(
+          '🔄 Retrying request (${retries + 1}/$maxRetries): ${err.requestOptions.path}');
+
       extra['retries'] = retries + 1;
       err.requestOptions.extra = extra;
-      
+
       await Future.delayed(delay * (retries + 1)); // Exponential backoff
-      
+
       try {
         final dio = Dio();
         final response = await dio.fetch(err.requestOptions);
@@ -39,15 +40,15 @@ class RetryInterceptor extends Interceptor {
         return;
       }
     }
-    
+
     super.onError(err, handler);
   }
 
   bool _shouldRetry(DioException error) {
     return error.type == DioExceptionType.connectionTimeout ||
-           error.type == DioExceptionType.sendTimeout ||
-           error.type == DioExceptionType.receiveTimeout ||
-           (error.response != null && 
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        (error.response != null &&
             retryStatusCodes.contains(error.response!.statusCode));
   }
 }

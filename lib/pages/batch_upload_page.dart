@@ -52,7 +52,8 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
   }
 
   // 七牛云上传逻辑 (从 edit.dart 复用并适配)
-  Future<ReturnBody?> startUploadToQiniu(String token, File file, int index) async {
+  Future<ReturnBody?> startUploadToQiniu(
+      String token, File file, int index) async {
     try {
       if (!await file.exists()) return null;
 
@@ -79,12 +80,11 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
         body = ReturnBody(
             key: body.key,
             width: frameInfo.image.width.toDouble(),
-            height: frameInfo.image.height.toDouble()
-        );
+            height: frameInfo.image.height.toDouble());
       } catch (e) {
         debugPrint('宽高计算失败: $e');
       }
-      
+
       return body;
     } catch (e) {
       debugPrint('上传失败: $e');
@@ -100,6 +100,8 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
     });
 
     try {
+      // 【单机模式】已注释掉网络检查与Token获取
+      /*
       // 检查网络
       final hasNetwork = await InternetAddress.lookup('baidu.com')
           .then((result) => result.isNotEmpty && result[0].rawAddress.isNotEmpty)
@@ -110,21 +112,13 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
         setState(() => _isUploading = false);
         return;
       }
-
-      // 获取当前用户信息 (假设从全局或通过某种方式获取，这里为了简单直接取 token)
-      // 注意：这里需要 OwnerModel 的 uid，但 edit.dart 传进来时没带 user 对象。
-      // 为保持 edit.dart 逻辑一致，我们可能需要 user id。
-      // 暂时假设 DAO 内部处理或上层确保登录。
-      // !重要：createToy 接口需要 owner uid。edit.dart 是通过 widget.user.uid 传的。
-      // BatchUploadPage 目前没有 user uid。
-      // 这是一个发现的问题，我需要先完成骨架，待会修复 uid 传递。
-      // 先假设 token 获取成功。
       
       String token = await TreasureDao.getToken('upload');
+      */
 
       // 串行队列逻辑
       int successCount = 0;
-      
+
       for (int i = 0; i < widget.images.length; i++) {
         // 如果页面关闭了，停止上传
         if (!mounted) break;
@@ -134,6 +128,8 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
           _itemStates[i]?.status = UploadStatus.uploading;
         });
 
+        // 【单机模式】已注释掉七牛云网络上传，本地计算宽高
+        /*
         // 1. 上传七牛
         final result = await startUploadToQiniu(token, widget.images[i], i);
         
@@ -144,6 +140,26 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
           });
           continue;
         }
+        */
+
+        // 本地计算宽高
+        double localWidth = 300.0;
+        double localHeight = 300.0;
+        try {
+          var bytes = await widget.images[i].readAsBytes();
+          var codec = await ui.instantiateImageCodec(bytes);
+          var frameInfo = await codec.getNextFrame();
+          localWidth = frameInfo.image.width.toDouble();
+          localHeight = frameInfo.image.height.toDouble();
+        } catch (e) {
+          debugPrint('宽高计算失败: $e');
+        }
+
+        final result = ReturnBody(
+          key: widget.images[i].path,
+          width: localWidth,
+          height: localHeight,
+        );
 
         // 更新状态为保存中
         setState(() {
@@ -151,7 +167,8 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
         });
 
         // 准备默认值
-        final String finalName = widget.toyName.isEmpty ? '默认上传' : widget.toyName;
+        final String finalName =
+            widget.toyName.isEmpty ? '默认上传' : widget.toyName;
         final num finalPrice = widget.price == 0 ? 1 : widget.price;
         final String finalLabel = widget.label.isEmpty ? '盲盒' : widget.label;
 
@@ -161,16 +178,16 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
           // 暂时使用空字符串或尝试从全局获取（如果有）。
           // 既然 edit.dart 有 widget.user.uid，BatchUploadPage 应该也有。
           // 代码修改时我会加上这个参数。
-          
+
           await TreasureDao.poMicro({
-             'toyName': finalName,
-             'description': widget.description,
-             'toyPicUrl': result.key,
-             'picWidth': result.width,
-             'picHeight': result.height,
-             'labels': finalLabel,
-             'owner': widget.uid,
-             'price': finalPrice,
+            'toyName': finalName,
+            'description': widget.description,
+            'toyPicUrl': result.key,
+            'picWidth': result.width,
+            'picHeight': result.height,
+            'labels': finalLabel,
+            'owner': widget.uid,
+            'price': finalPrice,
           });
 
           successCount++;
@@ -190,10 +207,10 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
           CommonUtils.showSnackBar(context, '全部发布成功！');
           Navigator.pop(context);
         } else {
-           CommonUtils.showSnackBar(context, '发布完成，成功 $successCount 张，失败 ${widget.images.length - successCount} 张');
+          CommonUtils.showSnackBar(context,
+              '发布完成，成功 $successCount 张，失败 ${widget.images.length - successCount} 张');
         }
       }
-
     } catch (e) {
       if (mounted) CommonUtils.showSnackBar(context, '发生错误: $e');
     } finally {
@@ -210,13 +227,15 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
       case UploadStatus.pending:
         return const Text('等待中', style: TextStyle(color: Colors.grey));
       case UploadStatus.uploading:
-        return Text('上传中 ${(state.progress * 100).toInt()}%', style: const TextStyle(color: Colors.blue));
+        return Text('上传中 ${(state.progress * 100).toInt()}%',
+            style: const TextStyle(color: Colors.blue));
       case UploadStatus.saving:
         return const Text('保存中...', style: TextStyle(color: Colors.orange));
       case UploadStatus.success:
         return const Icon(Icons.check_circle, color: Colors.green);
       case UploadStatus.failed:
-        return Text(state.error ?? '失败', style: const TextStyle(color: Colors.red));
+        return Text(state.error ?? '失败',
+            style: const TextStyle(color: Colors.red));
     }
   }
 
@@ -250,7 +269,7 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
         itemBuilder: (context, index) {
           final file = widget.images[index];
           final state = _itemStates[index] ?? BatchUploadItemState();
-          
+
           return Container(
             height: 100,
             margin: const EdgeInsets.only(bottom: 12),
@@ -293,7 +312,7 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                             Text(
+                            Text(
                               '图片 ${index + 1}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
@@ -308,7 +327,8 @@ class _BatchUploadPageState extends State<BatchUploadPage> {
                           LinearProgressIndicator(
                             value: state.progress,
                             backgroundColor: Colors.grey[200],
-                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.blue),
                           ),
                       ],
                     ),

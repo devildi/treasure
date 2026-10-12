@@ -15,7 +15,9 @@ class TreasureApi {
     String? baseUrl,
   }) {
     final url = baseUrl ??
-        (isDevelopMode ? 'http://10.40.204.50:4000/' : 'https://nextsticker.cn/');
+        (isDevelopMode
+            ? 'http://10.40.204.50:4000/'
+            : 'https://nextsticker.cn/');
 
     debugPrint('🔧 TreasureApi.initialize: 配置API客户端');
     debugPrint('🔧 TreasureApi.initialize: baseUrl = $url');
@@ -38,7 +40,7 @@ class TreasureApi {
         'api/users/',
         data: data,
       );
-      
+
       if (response.isSuccess && response.data != null) {
         if (response.data == '此用户名已经注册！') {
           return ApiResponse.error(
@@ -51,7 +53,8 @@ class TreasureApi {
             message: '未授权！',
           );
         } else {
-          final user = OwnerModel.fromJson(response.data as Map<String, dynamic>);
+          final user =
+              OwnerModel.fromJson(response.data as Map<String, dynamic>);
           return ApiResponse.success(
             data: user,
             statusCode: response.statusCode,
@@ -59,7 +62,7 @@ class TreasureApi {
           );
         }
       }
-      
+
       return ApiResponse.error(
         statusCode: response.statusCode,
         message: response.message,
@@ -78,7 +81,7 @@ class TreasureApi {
         'api/users/login',
         data: data,
       );
-      
+
       if (response.isSuccess) {
         if (response.data == null || response.data == '') {
           return ApiResponse.success(
@@ -87,7 +90,8 @@ class TreasureApi {
             message: '登录失败',
           );
         } else {
-          final user = OwnerModel.fromJson(response.data as Map<String, dynamic>);
+          final user =
+              OwnerModel.fromJson(response.data as Map<String, dynamic>);
           return ApiResponse.success(
             data: user,
             statusCode: response.statusCode,
@@ -95,7 +99,7 @@ class TreasureApi {
           );
         }
       }
-      
+
       return ApiResponse.error(
         statusCode: response.statusCode,
         message: response.message,
@@ -115,7 +119,7 @@ class TreasureApi {
         'api/trip/getUploadToken',
         queryParameters: {'type': type},
       );
-      
+
       return response;
     } catch (e) {
       return ApiResponse.error(
@@ -136,7 +140,8 @@ class TreasureApi {
         fromJson: (data) => AllToysModel.fromJson(data as List),
       );
 
-      debugPrint('📨 TreasureApi.getAllToys: _apiClient响应完成 (success=${response.isSuccess}, statusCode=${response.statusCode})');
+      debugPrint(
+          '📨 TreasureApi.getAllToys: _apiClient响应完成 (success=${response.isSuccess}, statusCode=${response.statusCode})');
 
       if (response.isSuccess && response.data != null) {
         debugPrint('✅ TreasureApi.getAllToys: 返回成功响应');
@@ -146,7 +151,7 @@ class TreasureApi {
           message: response.message,
         );
       }
-      
+
       return ApiResponse.error(
         statusCode: response.statusCode,
         message: response.message,
@@ -164,9 +169,10 @@ class TreasureApi {
       final response = await _apiClient.get<dynamic>(
         'api/treasure/getTotalPriceAndCount',
         queryParameters: {'uid': uid},
-        fromJson: (data) => PriceCountModel.fromJson(data as Map<String, dynamic>),
+        fromJson: (data) =>
+            PriceCountModel.fromJson(data as Map<String, dynamic>),
       );
-      
+
       if (response.isSuccess && response.data != null) {
         return ApiResponse.success(
           data: response.data as PriceCountModel,
@@ -174,7 +180,7 @@ class TreasureApi {
           message: response.message,
         );
       }
-      
+
       return ApiResponse.error(
         statusCode: response.statusCode,
         message: response.message,
@@ -187,14 +193,15 @@ class TreasureApi {
     }
   }
 
-  Future<ApiResponse<AllToysModel>> searchToys(String keyword, String uid) async {
+  Future<ApiResponse<AllToysModel>> searchToys(
+      String keyword, String uid) async {
     try {
       final response = await _apiClient.get<dynamic>(
         'api/treasure/search',
         queryParameters: {'keyword': keyword, 'uid': uid},
         fromJson: (data) => AllToysModel.fromJson(data as List),
       );
-      
+
       if (response.isSuccess && response.data != null) {
         return ApiResponse.success(
           data: response.data as AllToysModel,
@@ -202,7 +209,7 @@ class TreasureApi {
           message: response.message,
         );
       }
-      
+
       return ApiResponse.error(
         statusCode: response.statusCode,
         message: response.message,
@@ -221,7 +228,7 @@ class TreasureApi {
         'api/treasure/newItem',
         data: data,
       );
-      
+
       return response;
     } catch (e) {
       return ApiResponse.error(
@@ -237,7 +244,7 @@ class TreasureApi {
         'api/treasure/modify',
         data: data,
       );
-      
+
       return response;
     } catch (e) {
       return ApiResponse.error(
@@ -257,11 +264,13 @@ class TreasureApi {
         fromJson: (data) => ResultModel.fromJson(data as Map<String, dynamic>),
       );
 
-      debugPrint('📨 TreasureApi.deleteToy: _apiClient响应完成 (success=${response.isSuccess}, statusCode=${response.statusCode})');
+      debugPrint(
+          '📨 TreasureApi.deleteToy: _apiClient响应完成 (success=${response.isSuccess}, statusCode=${response.statusCode})');
 
       if (response.isSuccess && response.data != null) {
         final result = response.data as ResultModel;
-        debugPrint('✅ TreasureApi.deleteToy: 删除成功 (deletedCount=${result.deletedCount})');
+        debugPrint(
+            '✅ TreasureApi.deleteToy: 删除成功 (deletedCount=${result.deletedCount})');
         return ApiResponse.success(
           data: result,
           statusCode: response.statusCode,

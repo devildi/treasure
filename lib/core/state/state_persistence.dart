@@ -10,16 +10,16 @@ abstract class StatePersistence {
 
   /// 保存数据
   Future<void> save(String key, Map<String, dynamic> data);
-  
+
   /// 加载数据
   Future<Map<String, dynamic>?> load(String key);
-  
+
   /// 删除数据
   Future<void> delete(String key);
-  
+
   /// 清除所有数据
   Future<void> clear();
-  
+
   /// 检查数据是否存在
   Future<bool> exists(String key);
 }
@@ -27,7 +27,7 @@ abstract class StatePersistence {
 /// SharedPreferences实现
 class _SharedPreferencesPersistence implements StatePersistence {
   static SharedPreferences? _prefs;
-  
+
   Future<SharedPreferences> get prefs async {
     return _prefs ??= await SharedPreferences.getInstance();
   }
@@ -38,7 +38,7 @@ class _SharedPreferencesPersistence implements StatePersistence {
       final jsonString = jsonEncode(data);
       final preferences = await prefs;
       await preferences.setString(key, jsonString);
-      
+
       if (kDebugMode) {
         debugPrint('💾 状态已保存: $key');
       }
@@ -53,20 +53,20 @@ class _SharedPreferencesPersistence implements StatePersistence {
     try {
       final preferences = await prefs;
       final jsonString = preferences.getString(key);
-      
+
       if (jsonString == null) {
         if (kDebugMode) {
           debugPrint('📂 状态不存在: $key');
         }
         return null;
       }
-      
+
       final data = jsonDecode(jsonString) as Map<String, dynamic>;
-      
+
       if (kDebugMode) {
         debugPrint('📖 状态已加载: $key');
       }
-      
+
       return data;
     } catch (e) {
       debugPrint('❌ 加载状态失败 [$key]: $e');
@@ -79,7 +79,7 @@ class _SharedPreferencesPersistence implements StatePersistence {
     try {
       final preferences = await prefs;
       await preferences.remove(key);
-      
+
       if (kDebugMode) {
         debugPrint('🗑️ 状态已删除: $key');
       }
@@ -94,7 +94,7 @@ class _SharedPreferencesPersistence implements StatePersistence {
     try {
       final preferences = await prefs;
       await preferences.clear();
-      
+
       if (kDebugMode) {
         debugPrint('🧹 所有状态已清除');
       }
@@ -123,14 +123,14 @@ class FilePersistence implements StatePersistence {
 
   Future<Directory> get stateDirectory async {
     if (_stateDirectory != null) return _stateDirectory!;
-    
+
     final appDocDir = await getApplicationDocumentsDirectory();
     _stateDirectory = Directory('${appDocDir.path}/$_folderName');
-    
+
     if (!await _stateDirectory!.exists()) {
       await _stateDirectory!.create(recursive: true);
     }
-    
+
     return _stateDirectory!;
   }
 
@@ -145,9 +145,9 @@ class FilePersistence implements StatePersistence {
       await stateDirectory; // 确保目录存在
       final file = _getFile(key);
       final jsonString = jsonEncode(data);
-      
+
       await file.writeAsString(jsonString);
-      
+
       if (kDebugMode) {
         debugPrint('💾 文件状态已保存: $key (${jsonString.length} bytes)');
       }
@@ -162,21 +162,21 @@ class FilePersistence implements StatePersistence {
     try {
       await stateDirectory; // 确保目录存在
       final file = _getFile(key);
-      
+
       if (!await file.exists()) {
         if (kDebugMode) {
           debugPrint('📂 文件状态不存在: $key');
         }
         return null;
       }
-      
+
       final jsonString = await file.readAsString();
       final data = jsonDecode(jsonString) as Map<String, dynamic>;
-      
+
       if (kDebugMode) {
         debugPrint('📖 文件状态已加载: $key (${jsonString.length} bytes)');
       }
-      
+
       return data;
     } catch (e) {
       debugPrint('❌ 加载文件状态失败 [$key]: $e');
@@ -189,10 +189,10 @@ class FilePersistence implements StatePersistence {
     try {
       await stateDirectory; // 确保目录存在
       final file = _getFile(key);
-      
+
       if (await file.exists()) {
         await file.delete();
-        
+
         if (kDebugMode) {
           debugPrint('🗑️ 文件状态已删除: $key');
         }
@@ -207,11 +207,11 @@ class FilePersistence implements StatePersistence {
   Future<void> clear() async {
     try {
       final dir = await stateDirectory;
-      
+
       if (await dir.exists()) {
         await dir.delete(recursive: true);
         await dir.create(recursive: true);
-        
+
         if (kDebugMode) {
           debugPrint('🧹 所有文件状态已清除');
         }
@@ -239,14 +239,12 @@ class FilePersistence implements StatePersistence {
 class HybridPersistence implements StatePersistence {
   final StatePersistence _sharedPrefs = _SharedPreferencesPersistence();
   final StatePersistence _fileStorage = FilePersistence();
-  
+
   static const int _fileSizeThreshold = 1024 * 50; // 50KB
 
   StatePersistence _getStorage(Map<String, dynamic> data) {
     final jsonString = jsonEncode(data);
-    return jsonString.length > _fileSizeThreshold 
-        ? _fileStorage 
-        : _sharedPrefs;
+    return jsonString.length > _fileSizeThreshold ? _fileStorage : _sharedPrefs;
   }
 
   @override
@@ -260,7 +258,7 @@ class HybridPersistence implements StatePersistence {
     // 优先从SharedPreferences加载
     var data = await _sharedPrefs.load(key);
     if (data != null) return data;
-    
+
     // 然后尝试从文件系统加载
     return await _fileStorage.load(key);
   }
@@ -288,7 +286,7 @@ class HybridPersistence implements StatePersistence {
       _sharedPrefs.exists(key),
       _fileStorage.exists(key),
     ]);
-    
+
     return results.any((exists) => exists);
   }
 }

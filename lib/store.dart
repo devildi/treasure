@@ -17,28 +17,32 @@ class UserData with ChangeNotifier {
   bool loading;
   bool local;
 
-  void setUserData(OwnerModel dartObj){
+  void setUserData(OwnerModel dartObj) {
     user = dartObj;
     notifyListeners();
   }
-  void setNetWorkStatus(flag){
+
+  void setNetWorkStatus(flag) {
     netWorkStatus = flag;
     notifyListeners();
   }
-  void setPage(index){
+
+  void setPage(index) {
     page = index;
     notifyListeners();
   }
-  void setPre(index){
+
+  void setPre(index) {
     pre = index;
     notifyListeners();
   }
-  void setLoading(flag){
+
+  void setLoading(flag) {
     loading = flag;
     notifyListeners();
   }
 
-  void setLocal(flag){
+  void setLocal(flag) {
     local = flag;
     notifyListeners();
   }

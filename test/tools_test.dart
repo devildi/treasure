@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:treasure/tools.dart';
 import 'dart:io';
 
+class FakePathProviderPlatform extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
+  @override
+  Future<String?> getApplicationDocumentsPath() async => '/test/Documents';
+
+  @override
+  Future<String?> getTemporaryPath() async => '/test/temp';
+}
+
 void main() {
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    PathProviderPlatform.instance = FakePathProviderPlatform();
+  });
+
   group('CommonUtils Tests', () {
     group('randomColor Tests', () {
       test('returns a valid color from predefined list', () {
@@ -40,7 +56,8 @@ void main() {
     });
 
     group('showSnackBar Tests', () {
-      testWidgets('calls InteractiveFeedback.showSuccess for green background', (WidgetTester tester) async {
+      testWidgets('calls InteractiveFeedback.showSuccess for green background',
+          (WidgetTester tester) async {
         bool successCalled = false;
 
         await tester.pumpWidget(
@@ -48,7 +65,8 @@ void main() {
             home: Builder(
               builder: (context) => ElevatedButton(
                 onPressed: () {
-                  CommonUtils.showSnackBar(context, 'Success message', backgroundColor: Colors.green);
+                  CommonUtils.showSnackBar(context, 'Success message',
+                      backgroundColor: Colors.green);
                   successCalled = true;
                 },
                 child: const Text('Test'),
@@ -61,9 +79,11 @@ void main() {
         await tester.pump();
 
         expect(successCalled, isTrue);
+        await tester.pump(const Duration(seconds: 4));
       });
 
-      testWidgets('calls InteractiveFeedback.showError for red background', (WidgetTester tester) async {
+      testWidgets('calls InteractiveFeedback.showError for red background',
+          (WidgetTester tester) async {
         bool errorCalled = false;
 
         await tester.pumpWidget(
@@ -71,7 +91,8 @@ void main() {
             home: Builder(
               builder: (context) => ElevatedButton(
                 onPressed: () {
-                  CommonUtils.showSnackBar(context, 'Error message', backgroundColor: Colors.red);
+                  CommonUtils.showSnackBar(context, 'Error message',
+                      backgroundColor: Colors.red);
                   errorCalled = true;
                 },
                 child: const Text('Test'),
@@ -84,9 +105,11 @@ void main() {
         await tester.pump();
 
         expect(errorCalled, isTrue);
+        await tester.pump(const Duration(seconds: 4));
       });
 
-      testWidgets('calls InteractiveFeedback.showWarning for orange background', (WidgetTester tester) async {
+      testWidgets('calls InteractiveFeedback.showWarning for orange background',
+          (WidgetTester tester) async {
         bool warningCalled = false;
 
         await tester.pumpWidget(
@@ -94,7 +117,8 @@ void main() {
             home: Builder(
               builder: (context) => ElevatedButton(
                 onPressed: () {
-                  CommonUtils.showSnackBar(context, 'Warning message', backgroundColor: Colors.orange);
+                  CommonUtils.showSnackBar(context, 'Warning message',
+                      backgroundColor: Colors.orange);
                   warningCalled = true;
                 },
                 child: const Text('Test'),
@@ -107,9 +131,11 @@ void main() {
         await tester.pump();
 
         expect(warningCalled, isTrue);
+        await tester.pump(const Duration(seconds: 4));
       });
 
-      testWidgets('calls InteractiveFeedback.showInfo for default background', (WidgetTester tester) async {
+      testWidgets('calls InteractiveFeedback.showInfo for default background',
+          (WidgetTester tester) async {
         bool infoCalled = false;
 
         await tester.pumpWidget(
@@ -130,11 +156,13 @@ void main() {
         await tester.pump();
 
         expect(infoCalled, isTrue);
+        await tester.pump(const Duration(seconds: 4));
       });
     });
 
     group('show Tests', () {
-      testWidgets('displays overlay message correctly', (WidgetTester tester) async {
+      testWidgets('displays overlay message correctly',
+          (WidgetTester tester) async {
         await tester.pumpWidget(
           MaterialApp(
             home: Builder(
@@ -152,9 +180,11 @@ void main() {
         await tester.pump();
 
         expect(find.text('Test message'), findsOneWidget);
+        await tester.pump(const Duration(seconds: 3));
       });
 
-      testWidgets('overlay message appears with correct styling', (WidgetTester tester) async {
+      testWidgets('overlay message appears with correct styling',
+          (WidgetTester tester) async {
         await tester.pumpWidget(
           MaterialApp(
             home: Builder(
@@ -176,22 +206,27 @@ void main() {
 
         // Check that there's a Container with the expected styling
         final container = tester.widget<Container>(
-          find.ancestor(
-            of: find.text('Styled message'),
-            matching: find.byType(Container),
-          ).first,
+          find
+              .ancestor(
+                of: find.text('Styled message'),
+                matching: find.byType(Container),
+              )
+              .first,
         );
 
         expect(container.decoration, isA<BoxDecoration>());
+        await tester.pump(const Duration(seconds: 3));
       });
 
-      testWidgets('custom duration works correctly', (WidgetTester tester) async {
+      testWidgets('custom duration works correctly',
+          (WidgetTester tester) async {
         await tester.pumpWidget(
           MaterialApp(
             home: Builder(
               builder: (context) => ElevatedButton(
                 onPressed: () {
-                  CommonUtils.show(context, 'Custom duration', duration: const Duration(milliseconds: 100));
+                  CommonUtils.show(context, 'Custom duration',
+                      duration: const Duration(milliseconds: 100));
                 },
                 child: const Text('Show'),
               ),
@@ -261,7 +296,8 @@ void main() {
       });
 
       test('getLocalURLForResource returns correct path for video', () async {
-        final result = await CommonUtils.getLocalURLForResource('test123', isImg: false);
+        final result =
+            await CommonUtils.getLocalURLForResource('test123', isImg: false);
 
         expect(result.contains('test123.mp4'), isTrue);
         expect(result.contains('Documents'), isTrue);
@@ -275,7 +311,8 @@ void main() {
       });
 
       test('getLocalFileForResource returns File object for video', () async {
-        final result = await CommonUtils.getLocalFileForResource('test456', isImg: false);
+        final result =
+            await CommonUtils.getLocalFileForResource('test456', isImg: false);
 
         expect(result, isA<File>());
         expect(result.path.contains('test456.mp4'), isTrue);
@@ -288,7 +325,8 @@ void main() {
       });
 
       test('isFileExist returns false for non-existent video file', () async {
-        final result = await CommonUtils.isFileExist('non_existent_video_12345', isImg: false);
+        final result = await CommonUtils.isFileExist('non_existent_video_12345',
+            isImg: false);
 
         expect(result, isFalse);
       });
@@ -302,12 +340,14 @@ void main() {
 
       test('handles non-existent files without error', () async {
         // This should not throw an exception
-        await CommonUtils.deleteLocalFilesAsync(['non_existent_1', 'non_existent_2']);
+        await CommonUtils.deleteLocalFilesAsync(
+            ['non_existent_1', 'non_existent_2']);
       });
 
       test('handles video deletion without error', () async {
         // This should not throw an exception
-        await CommonUtils.deleteLocalFilesAsync(['pic_id', 'video_id'], hasVideo: true);
+        await CommonUtils.deleteLocalFilesAsync(['pic_id', 'video_id'],
+            hasVideo: true);
       });
     });
   });

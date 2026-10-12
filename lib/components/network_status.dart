@@ -15,7 +15,7 @@ class NetworkStatusBanner extends StatelessWidget {
         if (isNetworkAvailable) {
           return const SizedBox.shrink();
         }
-        
+
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
@@ -47,7 +47,8 @@ class NetworkStatusBanner extends StatelessWidget {
                   },
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.red.shade700,
                       borderRadius: BorderRadius.circular(4),
@@ -110,15 +111,16 @@ class ConnectionStatusIndicator extends StatelessWidget {
           width: size,
           height: size,
           decoration: BoxDecoration(
-            color: isNetworkAvailable 
-                ? (onlineColor ?? Colors.green) 
+            color: isNetworkAvailable
+                ? (onlineColor ?? Colors.green)
                 : (offlineColor ?? Colors.red),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: (isNetworkAvailable 
-                    ? (onlineColor ?? Colors.green) 
-                    : (offlineColor ?? Colors.red)).withOpacity(0.3),
+                color: (isNetworkAvailable
+                        ? (onlineColor ?? Colors.green)
+                        : (offlineColor ?? Colors.red))
+                    .withOpacity(0.3),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -155,7 +157,7 @@ class _NetworkAwareWidgetState extends State<NetworkAwareWidget> {
         if (!isNetworkAvailable && widget.offlineWidget != null) {
           return widget.offlineWidget!;
         }
-        
+
         return Stack(
           children: [
             widget.child,
@@ -192,12 +194,12 @@ class OfflineDataWidget extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          icon ?? 
-          Icon(
-            Icons.cloud_off,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          icon ??
+              Icon(
+                Icons.cloud_off,
+                size: 64,
+                color: Colors.grey[400],
+              ),
           const SizedBox(height: 16),
           Text(
             message,
@@ -251,10 +253,9 @@ class NetworkDiagnostic {
 
   static Future<Map<String, dynamic>> getNetworkInfo() async {
     final status = await checkNetworkStatus();
-    final latency = status == NetworkStatus.connected 
-        ? await checkNetworkLatency() 
-        : -1;
-    
+    final latency =
+        status == NetworkStatus.connected ? await checkNetworkLatency() : -1;
+
     return {
       'status': status,
       'latency': latency,
@@ -316,4 +317,3 @@ class _NetworkStatusProviderState extends State<NetworkStatusProvider> {
     return widget.child;
   }
 }
-

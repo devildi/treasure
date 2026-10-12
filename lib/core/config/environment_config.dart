@@ -4,7 +4,7 @@ import 'app_config.dart';
 class EnvironmentConfig {
   // 在这里修改环境，重新编译即可切换
   static const Environment currentEnv = Environment.production;
-  
+
   static void configureApp() {
     // 可以根据环境设置不同的配置
     switch (currentEnv) {
@@ -19,7 +19,7 @@ class EnvironmentConfig {
         break;
     }
   }
-  
+
   // 获取当前环境信息
   static String get environmentName {
     switch (currentEnv) {
@@ -31,7 +31,7 @@ class EnvironmentConfig {
         return 'Production';
     }
   }
-  
+
   static bool get isProduction => currentEnv == Environment.production;
   static bool get isDevelopment => currentEnv == Environment.development;
   static bool get isStaging => currentEnv == Environment.staging;

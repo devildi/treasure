@@ -36,7 +36,6 @@ class OptimizedImage extends StatefulWidget {
 
 class _OptimizedImageState extends State<OptimizedImage>
     with AutomaticKeepAliveClientMixin {
-  
   String? _localImagePath;
   bool _isLoading = true;
   bool _hasError = false;
@@ -61,7 +60,7 @@ class _OptimizedImageState extends State<OptimizedImage>
 
   Future<void> _loadImage() async {
     if (!mounted) return;
-    
+
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -70,7 +69,7 @@ class _OptimizedImageState extends State<OptimizedImage>
 
     try {
       final localPath = await _cacheManager.getImagePath(
-        widget.imageUrl, 
+        widget.imageUrl,
         widget.itemName,
       );
 
@@ -83,7 +82,7 @@ class _OptimizedImageState extends State<OptimizedImage>
       });
     } catch (e) {
       if (!mounted) return;
-      
+
       setState(() {
         _isLoading = false;
         _hasError = true;
@@ -93,39 +92,41 @@ class _OptimizedImageState extends State<OptimizedImage>
   }
 
   Widget _buildPlaceholder() {
-    return widget.placeholder ?? Container(
-      color: Colors.grey[200],
-      child: const Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-        ),
-      ),
-    );
+    return widget.placeholder ??
+        Container(
+          color: Colors.grey[200],
+          child: const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+            ),
+          ),
+        );
   }
 
   Widget _buildError() {
-    return widget.errorWidget ?? Container(
-      color: Colors.grey[300],
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.broken_image_outlined,
-            color: Colors.grey[600],
-            size: 32,
+    return widget.errorWidget ??
+        Container(
+          color: Colors.grey[300],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.broken_image_outlined,
+                color: Colors.grey[600],
+                size: 32,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '图片加载失败',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            '图片加载失败',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
+        );
   }
 
   Widget _buildLocalImage(String path) {
@@ -151,6 +152,9 @@ class _OptimizedImageState extends State<OptimizedImage>
   }
 
   Widget _buildNetworkImage() {
+    if (widget.imageUrl.isEmpty) {
+      return _buildError();
+    }
     return CachedNetworkImage(
       imageUrl: widget.imageUrl,
       width: widget.width,
@@ -162,9 +166,12 @@ class _OptimizedImageState extends State<OptimizedImage>
         debugPrint('网络图片加载错误 [${widget.itemName}]: $error');
         return _buildError();
       },
-      memCacheWidth: widget.width.toInt() * 2, // 2x分辨率缓存
-      memCacheHeight: widget.height?.toInt() ?? 
-                     (widget.width * widget.aspectRatio).toInt() * 2,
+      memCacheWidth: widget.width > 0 ? widget.width.toInt() * 2 : 1, // 2x分辨率缓存
+      memCacheHeight: widget.height != null
+          ? (widget.height! > 0 ? widget.height!.toInt() : 1)
+          : (widget.width > 0
+              ? (widget.width * widget.aspectRatio).toInt() * 2
+              : 1),
     );
   }
 
@@ -172,23 +179,24 @@ class _OptimizedImageState extends State<OptimizedImage>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final containerHeight = widget.height ?? (widget.width * widget.aspectRatio);
-    
+    final safeWidth = widget.width < 0 ? 0.0 : widget.width;
+    final containerHeight = widget.height ?? (safeWidth * widget.aspectRatio);
+
     return Container(
-      width: widget.width,
-      height: containerHeight,
+      width: safeWidth,
+      height: containerHeight < 0 ? 0.0 : containerHeight,
       decoration: BoxDecoration(
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(4),
       ),
       clipBehavior: Clip.antiAlias,
-      child: _isLoading 
-        ? _buildPlaceholder()
-        : _hasError 
-          ? _buildNetworkImage() // 降级到网络图片
-          : _localImagePath != null
-            ? _buildLocalImage(_localImagePath!)
-            : _buildNetworkImage(),
+      child: _isLoading
+          ? _buildPlaceholder()
+          : _hasError
+              ? _buildNetworkImage() // 降级到网络图片
+              : _localImagePath != null
+                  ? _buildLocalImage(_localImagePath!)
+                  : _buildNetworkImage(),
     );
   }
 
@@ -217,12 +225,54 @@ class OptimizedToyImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final aspectRatio = toy.picWidth > 0 ? toy.picHeight / toy.picWidth : 1.0;
-    
+    final safeWidth = width < 0 ? 0.0 : width;
+
+    if (toy == null) {
+      return placeholder ??
+          Container(
+            width: safeWidth,
+            height: safeWidth,
+            color: Colors.grey[200],
+          );
+    }
+
+    double picWidth = 0.0;
+    double picHeight = 0.0;
+    String imageUrl = '';
+    String itemName = 'Unknown';
+
+    if (toy is Map) {
+      picWidth =
+          (toy['picWidth'] is num) ? (toy['picWidth'] as num).toDouble() : 0.0;
+      picHeight = (toy['picHeight'] is num)
+          ? (toy['picHeight'] as num).toDouble()
+          : 0.0;
+      imageUrl = toy['toyPicUrl']?.toString() ?? '';
+      itemName = toy['toyName']?.toString() ?? 'Unknown';
+    } else {
+      try {
+        picWidth =
+            (toy.picWidth is num) ? (toy.picWidth as num).toDouble() : 0.0;
+      } catch (_) {}
+      try {
+        picHeight =
+            (toy.picHeight is num) ? (toy.picHeight as num).toDouble() : 0.0;
+      } catch (_) {}
+      try {
+        imageUrl = toy.toyPicUrl?.toString() ?? '';
+      } catch (_) {}
+      try {
+        itemName = toy.toyName?.toString() ?? 'Unknown';
+      } catch (_) {}
+    }
+
+    final aspectRatio =
+        picWidth > 0 && picHeight > 0 ? picHeight / picWidth : 1.0;
+
     return OptimizedImage(
-      imageUrl: toy.toyPicUrl ?? '',
-      itemName: toy.toyName ?? 'Unknown',
-      width: width,
+      imageUrl: imageUrl,
+      itemName: itemName,
+      width: safeWidth,
       aspectRatio: aspectRatio,
       fit: fit,
       placeholder: placeholder,

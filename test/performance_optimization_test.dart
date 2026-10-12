@@ -15,7 +15,7 @@ void main() {
 
       test('should record performance metrics', () {
         performanceManager.recordMetric('test_operation', 150.5);
-        
+
         final report = performanceManager.getPerformanceReport();
         expect(report.metrics.isNotEmpty, true);
         expect(report.metrics.last.name, 'test_operation');
@@ -23,13 +23,14 @@ void main() {
       });
 
       test('should measure async operation time', () async {
-        final result = await performanceManager.measureAsync('async_test', () async {
+        final result =
+            await performanceManager.measureAsync('async_test', () async {
           await Future.delayed(const Duration(milliseconds: 50));
           return 'test_result';
         });
 
         expect(result, 'test_result');
-        
+
         final report = performanceManager.getPerformanceReport();
         final metric = report.metrics.firstWhere((m) => m.name == 'async_test');
         expect(metric.value, greaterThan(40)); // 应该至少50ms
@@ -46,7 +47,7 @@ void main() {
         });
 
         expect(result, isA<int>());
-        
+
         final report = performanceManager.getPerformanceReport();
         final hasMetric = report.metrics.any((m) => m.name == 'sync_test');
         expect(hasMetric, true);
@@ -97,17 +98,17 @@ void main() {
 
       test('should track widget instances', () {
         final initialCount = memoryOptimizer.activeWidgetCount;
-        
+
         // 模拟添加widget引用
         const dummyWidget = SizedBox();
         memoryOptimizer.trackWidget(dummyWidget);
-        
+
         expect(memoryOptimizer.activeWidgetCount, greaterThan(initialCount));
       });
 
       test('should provide memory usage statistics', () {
         final stats = memoryOptimizer.getMemoryStats();
-        
+
         expect(stats, isA<MemoryUsageStats>());
         expect(stats.activeCacheCount, isA<int>());
         expect(stats.totalCacheCount, isA<int>());
@@ -142,9 +143,9 @@ void main() {
       test('should record widget build times', () {
         const widgetName = 'TestWidget';
         const buildTime = Duration(milliseconds: 25);
-        
+
         widgetOptimizer.recordWidgetBuildTime(widgetName, buildTime);
-        
+
         final report = widgetOptimizer.getPerformanceReport();
         expect(report.length, 1);
         expect(report[0].widgetName, widgetName);
@@ -154,10 +155,12 @@ void main() {
       test('should detect expensive widgets', () {
         const expensiveWidget = 'ExpensiveWidget';
         const fastWidget = 'FastWidget';
-        
-        widgetOptimizer.recordWidgetBuildTime(expensiveWidget, const Duration(milliseconds: 50));
-        widgetOptimizer.recordWidgetBuildTime(fastWidget, const Duration(milliseconds: 5));
-        
+
+        widgetOptimizer.recordWidgetBuildTime(
+            expensiveWidget, const Duration(milliseconds: 50));
+        widgetOptimizer.recordWidgetBuildTime(
+            fastWidget, const Duration(milliseconds: 5));
+
         final expensiveWidgets = widgetOptimizer.getExpensiveWidgets();
         expect(expensiveWidgets, contains(expensiveWidget));
         expect(expensiveWidgets, isNot(contains(fastWidget)));
@@ -165,47 +168,53 @@ void main() {
 
       test('should calculate widget metrics correctly', () {
         const widgetName = 'MetricsTestWidget';
-        
+
         // 添加多个构建时间
-        widgetOptimizer.recordWidgetBuildTime(widgetName, const Duration(milliseconds: 10));
-        widgetOptimizer.recordWidgetBuildTime(widgetName, const Duration(milliseconds: 20));
-        widgetOptimizer.recordWidgetBuildTime(widgetName, const Duration(milliseconds: 30));
-        
+        widgetOptimizer.recordWidgetBuildTime(
+            widgetName, const Duration(milliseconds: 10));
+        widgetOptimizer.recordWidgetBuildTime(
+            widgetName, const Duration(milliseconds: 20));
+        widgetOptimizer.recordWidgetBuildTime(
+            widgetName, const Duration(milliseconds: 30));
+
         final report = widgetOptimizer.getPerformanceReport();
         final metrics = report.first;
-        
+
         expect(metrics.widgetName, widgetName);
         expect(metrics.rebuildCount, 3);
         expect(metrics.averageBuildTime.inMilliseconds, 20); // (10+20+30)/3
         expect(metrics.maxBuildTime.inMilliseconds, 30);
-        expect(metrics.isExpensive, false); // 平均20ms < 16ms阈值
+        expect(metrics.isExpensive, true); // 平均20ms > 16ms阈值
       });
 
       test('should limit build time history', () {
         const widgetName = 'HistoryTestWidget';
-        
+
         // 添加超过限制的构建时间记录
         for (int i = 0; i < 150; i++) {
           widgetOptimizer.recordWidgetBuildTime(
-            widgetName, 
+            widgetName,
             Duration(milliseconds: i),
           );
         }
-        
+
         final report = widgetOptimizer.getPerformanceReport();
         final metrics = report.first;
-        
+
         // 内部应该限制历史记录数量（在PerformanceWidgetMetrics中限制为100）
         expect(metrics.rebuildCount, 150); // 计数器不限制
       });
 
       test('should sort performance report by average build time', () {
-        widgetOptimizer.recordWidgetBuildTime('SlowWidget', const Duration(milliseconds: 100));
-        widgetOptimizer.recordWidgetBuildTime('FastWidget', const Duration(milliseconds: 5));
-        widgetOptimizer.recordWidgetBuildTime('MediumWidget', const Duration(milliseconds: 50));
-        
+        widgetOptimizer.recordWidgetBuildTime(
+            'SlowWidget', const Duration(milliseconds: 100));
+        widgetOptimizer.recordWidgetBuildTime(
+            'FastWidget', const Duration(milliseconds: 5));
+        widgetOptimizer.recordWidgetBuildTime(
+            'MediumWidget', const Duration(milliseconds: 50));
+
         final report = widgetOptimizer.getPerformanceReport();
-        
+
         expect(report.length, 3);
         expect(report[0].widgetName, 'SlowWidget'); // 最慢的应该排在前面
         expect(report[1].widgetName, 'MediumWidget');
@@ -218,48 +227,51 @@ void main() {
         final performanceManager = PerformanceManager.instance;
         final memoryOptimizer = MemoryOptimizer.instance;
         final widgetOptimizer = WidgetPerformanceOptimizer.instance;
-        
+
         // 清理初始状态
         performanceManager.clearHistory();
         memoryOptimizer.clearAllCaches();
         widgetOptimizer.clearMetrics();
-        
+
         // 模拟应用性能数据
         performanceManager.recordMetric('api_call', 150.0);
         performanceManager.recordMetric('image_load', 80.0);
-        
+
         const dummyWidget = SizedBox();
         memoryOptimizer.trackWidget(dummyWidget);
-        
-        widgetOptimizer.recordWidgetBuildTime('HomePage', const Duration(milliseconds: 25));
-        
+
+        widgetOptimizer.recordWidgetBuildTime(
+            'HomePage', const Duration(milliseconds: 25));
+
         // 验证所有系统都有数据
         final perfReport = performanceManager.getPerformanceReport();
         final memStats = memoryOptimizer.getMemoryStats();
         final widgetReport = widgetOptimizer.getPerformanceReport();
-        
-        expect(perfReport.metrics.length, 2);
+
+        expect(perfReport.metrics.length,
+            3); // api_call, image_load, and widget_build_HomePage
         expect(memStats.activeWidgetCount, greaterThan(0));
         expect(widgetReport.length, 1);
       });
 
       test('should handle memory pressure scenarios', () {
         final memoryOptimizer = MemoryOptimizer.instance;
-        
+
         // 模拟内存压力场景
         for (int i = 0; i < 100; i++) {
           final widget = SizedBox(key: Key('widget_$i'));
           memoryOptimizer.trackWidget(widget);
         }
-        
+
         final statsBefore = memoryOptimizer.getMemoryStats();
-        
+
         // 清理缓存
         memoryOptimizer.clearAllCaches();
-        
+
         final statsAfter = memoryOptimizer.getMemoryStats();
-        
-        expect(statsBefore.totalWidgetCount, greaterThan(statsAfter.totalWidgetCount));
+
+        expect(statsBefore.totalWidgetCount,
+            greaterThan(statsAfter.totalWidgetCount));
       });
     });
   });

@@ -34,9 +34,9 @@ class ServerException extends NetworkException {
     int? statusCode,
     String? message,
   }) : super(
-    statusCode: statusCode,
-    message: message ?? '服务器错误',
-  );
+          statusCode: statusCode,
+          message: message ?? '服务器错误',
+        );
 }
 
 class RequestCancelledException extends NetworkException {
@@ -44,31 +44,35 @@ class RequestCancelledException extends NetworkException {
 }
 
 class UnauthorizedException extends NetworkException {
-  UnauthorizedException() : super(
-    message: '未授权访问，请重新登录',
-    statusCode: 401,
-  );
+  UnauthorizedException()
+      : super(
+          message: '未授权访问，请重新登录',
+          statusCode: 401,
+        );
 }
 
 class ForbiddenException extends NetworkException {
-  ForbiddenException() : super(
-    message: '禁止访问',
-    statusCode: 403,
-  );
+  ForbiddenException()
+      : super(
+          message: '禁止访问',
+          statusCode: 403,
+        );
 }
 
 class NotFoundException extends NetworkException {
-  NotFoundException() : super(
-    message: '请求的资源不存在',
-    statusCode: 404,
-  );
+  NotFoundException()
+      : super(
+          message: '请求的资源不存在',
+          statusCode: 404,
+        );
 }
 
 class BadRequestException extends NetworkException {
-  BadRequestException({String? message}) : super(
-    message: message ?? '请求参数错误',
-    statusCode: 400,
-  );
+  BadRequestException({String? message})
+      : super(
+          message: message ?? '请求参数错误',
+          statusCode: 400,
+        );
 }
 
 class UnknownNetworkException extends NetworkException {

@@ -60,12 +60,12 @@ void main() {
       test('ServerException should have correct status code and message', () {
         const statusCode = 500;
         const message = '服务器内部错误';
-        
+
         final exception = ServerException(
           statusCode: statusCode,
           message: message,
         );
-        
+
         expect(exception.statusCode, statusCode);
         expect(exception.message, message);
       });
@@ -131,7 +131,7 @@ void main() {
   group('Integration Tests', () {
     // These would be integration tests that require network connectivity
     // They should be run separately from unit tests
-    
+
     test('should handle network timeout gracefully', () async {
       // This test would simulate network timeout scenarios
       // Implementation would depend on your testing strategy

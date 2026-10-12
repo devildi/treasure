@@ -8,7 +8,7 @@ class ImagePreloader {
 
   final Set<String> _preloadingUrls = <String>{};
   final Set<String> _preloadedUrls = <String>{};
-  
+
   /// Preload images for better performance
   Future<void> preloadImages(
     BuildContext context,
@@ -16,9 +16,9 @@ class ImagePreloader {
     int maxConcurrent = 3,
   }) async {
     final urlsToPreload = imageUrls
-        .where((url) => 
-            url.isNotEmpty && 
-            !_preloadedUrls.contains(url) && 
+        .where((url) =>
+            url.isNotEmpty &&
+            !_preloadedUrls.contains(url) &&
             !_preloadingUrls.contains(url))
         .toList();
 
@@ -29,7 +29,7 @@ class ImagePreloader {
 
     // Split into chunks for concurrent loading
     final chunks = _chunkList(urlsToPreload, maxConcurrent);
-    
+
     for (final chunk in chunks) {
       await Future.wait(
         chunk.map((url) => _preloadSingleImage(context, url)),
@@ -40,18 +40,18 @@ class ImagePreloader {
 
   Future<void> _preloadSingleImage(BuildContext context, String url) async {
     if (!context.mounted) return;
-    
+
     try {
       // Use cached_network_image's cache manager to preload
       await CachedNetworkImage.evictFromCache(url);
-      
+
       if (!context.mounted) return;
-      
+
       await precacheImage(
         CachedNetworkImageProvider(url),
         context,
       );
-      
+
       _preloadedUrls.add(url);
       debugPrint('✅ Preloaded image: $url');
     } catch (e) {
@@ -69,15 +69,15 @@ class ImagePreloader {
     int maxConcurrent = 2,
   }) async {
     if (!context.mounted) return;
-    
+
     try {
       final nextPageUrls = await getNextPageUrls();
-      
+
       if (!context.mounted) return;
-      
+
       await preloadImages(
-        context, 
-        nextPageUrls, 
+        context,
+        nextPageUrls,
         maxConcurrent: maxConcurrent,
       );
     } catch (e) {
@@ -111,7 +111,8 @@ class ImagePreloader {
     final chunks = <List<T>>[];
     for (int i = 0; i < list.length; i += chunkSize) {
       chunks.add(
-        list.sublist(i, i + chunkSize > list.length ? list.length : i + chunkSize),
+        list.sublist(
+            i, i + chunkSize > list.length ? list.length : i + chunkSize),
       );
     }
     return chunks;
@@ -144,7 +145,8 @@ class AutoPreloadingScrollView extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  AutoPreloadingScrollViewState createState() => AutoPreloadingScrollViewState();
+  AutoPreloadingScrollViewState createState() =>
+      AutoPreloadingScrollViewState();
 }
 
 class AutoPreloadingScrollViewState extends State<AutoPreloadingScrollView> {
@@ -157,7 +159,7 @@ class AutoPreloadingScrollViewState extends State<AutoPreloadingScrollView> {
     super.initState();
     _controller = widget.controller ?? ScrollController();
     _controller.addListener(_scrollListener);
-    
+
     // Preload initial visible images
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _preloadInitialImages();
@@ -174,8 +176,8 @@ class AutoPreloadingScrollViewState extends State<AutoPreloadingScrollView> {
   }
 
   void _scrollListener() {
-    if (_controller.position.pixels >= 
-        _controller.position.maxScrollExtent - widget.preloadThreshold &&
+    if (_controller.position.pixels >=
+            _controller.position.maxScrollExtent - widget.preloadThreshold &&
         !_hasPreloadedNextPage &&
         widget.getNextPageUrls != null) {
       _preloadNextPageImages();
@@ -194,9 +196,9 @@ class AutoPreloadingScrollViewState extends State<AutoPreloadingScrollView> {
 
   Future<void> _preloadNextPageImages() async {
     if (widget.getNextPageUrls == null || _hasPreloadedNextPage) return;
-    
+
     _hasPreloadedNextPage = true;
-    
+
     try {
       final nextPageUrls = await widget.getNextPageUrls!();
       if (mounted) {
@@ -239,13 +241,13 @@ class PreloadableImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imageUrl.isEmpty) {
-      return errorWidget ?? 
-        Container(
-          width: width,
-          height: height,
-          color: Colors.grey[300],
-          child: const Icon(Icons.image_not_supported),
-        );
+      return errorWidget ??
+          Container(
+            width: width,
+            height: height,
+            color: Colors.grey[300],
+            child: const Icon(Icons.image_not_supported),
+          );
     }
 
     return CachedNetworkImage(
@@ -253,24 +255,24 @@ class PreloadableImage extends StatelessWidget {
       width: width,
       height: height,
       fit: fit ?? BoxFit.cover,
-      placeholder: (context, url) => 
-        placeholder ?? 
-        Container(
-          width: width,
-          height: height,
-          color: Colors.grey[300],
-          child: const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
+      placeholder: (context, url) =>
+          placeholder ??
+          Container(
+            width: width,
+            height: height,
+            color: Colors.grey[300],
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
-        ),
       errorWidget: (context, url, error) =>
-        errorWidget ??
-        Container(
-          width: width,
-          height: height,
-          color: Colors.grey[300],
-          child: const Icon(Icons.error, color: Colors.red),
-        ),
+          errorWidget ??
+          Container(
+            width: width,
+            height: height,
+            color: Colors.grey[300],
+            child: const Icon(Icons.error, color: Colors.red),
+          ),
       // Enhanced caching
       memCacheWidth: width?.toInt(),
       memCacheHeight: height?.toInt(),

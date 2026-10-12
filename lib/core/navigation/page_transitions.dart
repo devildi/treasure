@@ -304,7 +304,7 @@ class AppNavigator {
     Duration? duration,
   }) {
     Route<T> route;
-    
+
     switch (type) {
       case PageTransitionType.fade:
         route = PageTransitions.fadeTransition<T>(
@@ -345,7 +345,7 @@ class AppNavigator {
         );
         break;
     }
-    
+
     return Navigator.of(context).push<T>(route);
   }
 
@@ -357,7 +357,7 @@ class AppNavigator {
     Duration? duration,
   }) {
     Route<T> route;
-    
+
     switch (type) {
       case PageTransitionType.fade:
         route = PageTransitions.fadeTransition<T>(
@@ -398,7 +398,7 @@ class AppNavigator {
         );
         break;
     }
-    
+
     return Navigator.of(context).pushReplacement<T, TO>(route);
   }
 

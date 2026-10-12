@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
+// import 'package:dio/dio.dart';
 import 'package:treasure/tools.dart';
 
 /// 统一的图片缓存管理器
@@ -11,10 +11,12 @@ class ImageCacheManager {
 
   // 内存缓存，存储已加载的本地路径
   final Map<String, String?> _localPathCache = {};
-  
+
   // 正在下载的图片，避免重复下载
   final Map<String, Future<String?>> _downloadingImages = {};
-  
+
+  // 【单机模式】已注释 Dio 网络客户端
+  /*
   final Dio _dio = Dio(BaseOptions(
     connectTimeout: const Duration(milliseconds: 10000), // 10 seconds
     receiveTimeout: const Duration(milliseconds: 15000), // 15 seconds
@@ -22,29 +24,40 @@ class ImageCacheManager {
       'User-Agent': 'TreasureApp/1.0',
     },
   ));
+  */
 
-  /// 获取图片的本地路径，如果不存在则下载
+  /// 获取图片的本地路径，如果不存在则返回 null（单机模式禁用网络下载）
   Future<String?> getImagePath(String imageUrl, String toyName) async {
     if (imageUrl.isEmpty) return null;
-    
+
+    // 【单机模式】如果直接就是本地绝对路径且文件存在，直接使用
+    if (imageUrl.startsWith('/') || imageUrl.startsWith('file://')) {
+      final sanitizedPath = imageUrl.replaceFirst('file://', '');
+      if (File(sanitizedPath).existsSync()) {
+        return sanitizedPath;
+      }
+    }
+
     final resourceId = CommonUtils.removeBaseUrl(imageUrl);
-    
+
     // 检查内存缓存
     if (_localPathCache.containsKey(resourceId)) {
       return _localPathCache[resourceId];
     }
-    
+
     try {
       // 检查本地文件是否存在
       final localPath = await CommonUtils.getLocalURLForResource(resourceId);
       final isExists = await CommonUtils.isFileExist(resourceId);
-      
+
       if (isExists) {
         debugPrint('🖼️ [$toyName] 使用本地图片缓存');
         _localPathCache[resourceId] = localPath;
         return localPath;
       }
-      
+
+      // 【单机模式】已注释掉远端网络下载
+      /*
       // 检查是否正在下载
       if (_downloadingImages.containsKey(resourceId)) {
         debugPrint('🔄 [$toyName] 等待图片下载完成');
@@ -61,6 +74,8 @@ class ImageCacheManager {
       _localPathCache[resourceId] = result;
       
       return result;
+      */
+      return null;
     } catch (e) {
       debugPrint('❌ [$toyName] 图片处理失败: $e');
       _localPathCache[resourceId] = null;
@@ -68,7 +83,8 @@ class ImageCacheManager {
     }
   }
 
-  /// 下载图片到本地
+  // 【单机模式】已注释掉网络下载方法
+  /*
   Future<String?> _downloadImage(String url, String path, String toyName) async {
     try {
       final response = await _dio.get<List<int>>(
@@ -90,12 +106,14 @@ class ImageCacheManager {
       debugPrint('❌ [$toyName] 图片下载失败: $e');
       return null;
     }
+    return null;
   }
+  */
 
   /// 预加载图片列表（用于性能优化）
   Future<void> preloadImages(List<Map<String, String>> images) async {
     final List<Future<String?>> futures = [];
-    
+
     for (final image in images) {
       final url = image['url'];
       final name = image['name'];
@@ -103,7 +121,7 @@ class ImageCacheManager {
         futures.add(getImagePath(url, name));
       }
     }
-    
+
     // 批量等待，但不阻塞UI
     Future.wait(futures).catchError((e) {
       debugPrint('批量预加载失败: $e');
@@ -128,7 +146,7 @@ class ImageCacheManager {
   /// 检查图片是否已缓存
   bool isImageCached(String imageUrl) {
     final resourceId = CommonUtils.removeBaseUrl(imageUrl);
-    return _localPathCache.containsKey(resourceId) && 
-           _localPathCache[resourceId] != null;
+    return _localPathCache.containsKey(resourceId) &&
+        _localPathCache[resourceId] != null;
   }
 }

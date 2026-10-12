@@ -44,7 +44,7 @@ class UserStateData {
     return UserStateData(
       user: OwnerModel.fromJson(json['user'] ?? {}),
       isLoggedIn: json['isLoggedIn'] ?? false,
-      lastLoginTime: json['lastLoginTime'] != null 
+      lastLoginTime: json['lastLoginTime'] != null
           ? DateTime.parse(json['lastLoginTime'])
           : null,
       preferences: Map<String, dynamic>.from(json['preferences'] ?? {}),
@@ -65,14 +65,13 @@ class UserStateData {
     return other is UserStateData &&
         other.user == user &&
         other.isLoggedIn == isLoggedIn &&
-        other.lastLoginTime == lastLoginTime;
+        other.lastLoginTime == lastLoginTime &&
+        mapEquals(other.preferences, preferences);
   }
 
   @override
   int get hashCode {
-    return user.hashCode ^ 
-           isLoggedIn.hashCode ^ 
-           lastLoginTime.hashCode;
+    return user.hashCode ^ isLoggedIn.hashCode ^ lastLoginTime.hashCode;
   }
 
   @override
@@ -82,17 +81,16 @@ class UserStateData {
 }
 
 /// 用户状态管理器
-class UserState extends AppState<UserStateData> 
+class UserState extends AppState<UserStateData>
     with StateManagementMixin<UserStateData> {
-  
   static const String _storageKey = 'user_state';
   final StatePersistence _persistence;
 
   UserState({
     UserStateData? initialState,
     StatePersistence? persistence,
-  }) : _persistence = persistence ?? StatePersistence(),
-       super(initialState ?? UserStateData.empty());
+  })  : _persistence = persistence ?? StatePersistence(),
+        super(initialState ?? UserStateData.empty());
 
   /// 当前用户
   OwnerModel get currentUser => state.user;
@@ -106,32 +104,34 @@ class UserState extends AppState<UserStateData>
   /// 登录
   Future<bool> login(OwnerModel user) async {
     return await asyncOperation(() async {
-      addToHistory(state);
-      
-      final newState = state.copyWith(
-        user: user,
-        isLoggedIn: true,
-        lastLoginTime: DateTime.now(),
-      );
-      
-      updateState(newState, shouldNotify: false);
-      await _saveState();
-      
-      return true;
-    }, errorPrefix: '用户登录失败') ?? false;
+          addToHistory(state);
+
+          final newState = state.copyWith(
+            user: user,
+            isLoggedIn: true,
+            lastLoginTime: DateTime.now(),
+          );
+
+          updateState(newState, shouldNotify: false);
+          await _saveState();
+
+          return true;
+        }, errorPrefix: '用户登录失败') ??
+        false;
   }
 
   /// 登出
   Future<bool> logout() async {
     return await asyncOperation(() async {
-      addToHistory(state);
-      
-      final newState = UserStateData.empty();
-      updateState(newState, shouldNotify: false);
-      await _clearState();
-      
-      return true;
-    }, errorPrefix: '用户登出失败') ?? false;
+          addToHistory(state);
+
+          final newState = UserStateData.empty();
+          updateState(newState, shouldNotify: false);
+          await _clearState();
+
+          return true;
+        }, errorPrefix: '用户登出失败') ??
+        false;
   }
 
   /// 更新用户信息
@@ -142,42 +142,45 @@ class UserState extends AppState<UserStateData>
     }
 
     return await asyncOperation(() async {
-      addToHistory(state);
-      
-      final newState = state.copyWith(user: updatedUser);
-      updateState(newState, shouldNotify: false);
-      await _saveState();
-      
-      return true;
-    }, errorPrefix: '更新用户信息失败') ?? false;
+          addToHistory(state);
+
+          final newState = state.copyWith(user: updatedUser);
+          updateState(newState);
+          await _saveState();
+
+          return true;
+        }, errorPrefix: '更新用户信息失败') ??
+        false;
   }
 
   /// 更新偏好设置
   Future<bool> updatePreference(String key, dynamic value) async {
     return await asyncOperation(() async {
-      final newPreferences = Map<String, dynamic>.from(preferences);
-      newPreferences[key] = value;
-      
-      final newState = state.copyWith(preferences: newPreferences);
-      updateState(newState, shouldNotify: false);
-      await _saveState();
-      
-      return true;
-    }, setLoadingState: false) ?? false;
+          final newPreferences = Map<String, dynamic>.from(preferences);
+          newPreferences[key] = value;
+
+          final newState = state.copyWith(preferences: newPreferences);
+          updateState(newState, shouldNotify: false);
+          await _saveState();
+
+          return true;
+        }, setLoadingState: false) ??
+        false;
   }
 
   /// 批量更新偏好设置
   Future<bool> updatePreferences(Map<String, dynamic> newPreferences) async {
     return await asyncOperation(() async {
-      final updatedPreferences = Map<String, dynamic>.from(preferences);
-      updatedPreferences.addAll(newPreferences);
-      
-      final newState = state.copyWith(preferences: updatedPreferences);
-      updateState(newState, shouldNotify: false);
-      await _saveState();
-      
-      return true;
-    }, setLoadingState: false) ?? false;
+          final updatedPreferences = Map<String, dynamic>.from(preferences);
+          updatedPreferences.addAll(newPreferences);
+
+          final newState = state.copyWith(preferences: updatedPreferences);
+          updateState(newState, shouldNotify: false);
+          await _saveState();
+
+          return true;
+        }, setLoadingState: false) ??
+        false;
   }
 
   /// 获取偏好设置值
@@ -218,14 +221,14 @@ class UserState extends AppState<UserStateData>
   /// 检查登录状态是否有效
   bool isLoginValid() {
     if (!isLoggedIn) return false;
-    
+
     final lastLogin = state.lastLoginTime;
     if (lastLogin == null) return false;
-    
+
     // 检查登录是否过期（例如30天）
     final now = DateTime.now();
     final thirtyDaysAgo = now.subtract(const Duration(days: 30));
-    
+
     return lastLogin.isAfter(thirtyDaysAgo);
   }
 
@@ -244,7 +247,7 @@ class UserState extends AppState<UserStateData>
     _saveState().catchError((e) {
       debugPrint('销毁时保存状态失败: $e');
     });
-    
+
     super.dispose();
   }
 }

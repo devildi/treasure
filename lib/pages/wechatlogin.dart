@@ -9,13 +9,12 @@ import 'package:treasure/core/state/state_manager.dart';
 class Login extends StatefulWidget {
   const Login({
     Key? key,
-  }): super(key: key);
+  }) : super(key: key);
   @override
   LoginState createState() => LoginState();
 }
 
 class LoginState extends State<Login> {
-  
   late VideoPlayerController _controller;
 
   @override
@@ -23,21 +22,22 @@ class LoginState extends State<Login> {
     super.initState();
     //_controller = VideoPlayerController.network(vedioURL)
     _controller = VideoPlayerController.asset("assets/video1.mp4")
-    ..initialize().then((_) {
-      // Ensure the first frame is shown after the video is initialized, even before the play button has been pressed.
-      setState(() {});
-      _controller.play();
-      _controller.setLooping(true);
-      _controller.setVolume(0.0);
-    });
+      ..initialize().then((_) {
+        // Ensure the first frame is shown after the video is initialized, even before the play button has been pressed.
+        setState(() {});
+        _controller.play();
+        _controller.setLooping(true);
+        _controller.setVolume(0.0);
+      });
   }
+
   @override
   void dispose() {
     super.dispose();
     _controller.dispose();
   }
 
-  void login()async{
+  void login() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth', json.encode(''));
     if (!context.mounted) return;
@@ -52,25 +52,24 @@ class LoginState extends State<Login> {
 
   @override
   Widget build(BuildContext context) {
-    
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: <Widget>[
           ClipRect(
-            child: Transform.scale(
-              scale: _controller.value.aspectRatio /
+              child: Transform.scale(
+            scale: _controller.value.aspectRatio /
                 MediaQuery.of(context).size.aspectRatio,
-              child: Center(
-                child: AspectRatio(
-                  aspectRatio: _controller.value.aspectRatio,
-                  child: VideoPlayer(_controller),
-                ),
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: _controller.value.aspectRatio,
+                child: VideoPlayer(_controller),
               ),
-            )
-          ),
+            ),
+          )),
           Positioned(
-            top: MediaQuery.of(context).size.height * 0.3 - 50, // Moved up by 50 pixels
+            top: MediaQuery.of(context).size.height * 0.3 -
+                50, // Moved up by 50 pixels
             left: 0,
             right: 0,
             child: Column(
@@ -101,7 +100,8 @@ class LoginState extends State<Login> {
                         blurRadius: 10,
                         color: Colors.black,
                         offset: Offset(2, 2),
-                  )],
+                      )
+                    ],
                   ),
                 ),
               ],
@@ -122,7 +122,7 @@ class LoginState extends State<Login> {
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children:[
+                children: [
                   Icon(Icons.wechat, color: Colors.white),
                   SizedBox(width: 10),
                   Text(
